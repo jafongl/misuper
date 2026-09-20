@@ -185,11 +185,11 @@ textarea { min-height:140px; resize:vertical; font-size:13px; }
   function errCopy(e) {
     var code = e && e.code;
     if (code === "code") return "El código de acceso es incorrecto. Vuelve a ingresarlo.";
-    if (code === "config") return "Falta configurar ANTHROPIC_API_KEY o APP_CODE en Vercel.";
-    if (code === "busy") return "El servicio está ocupado. Intenta de nuevo en un momento.";
+    if (code === "config") return "Falta configurar GEMINI_API_KEY (o ANTHROPIC_API_KEY) y APP_CODE en Vercel.";
+    if (code === "busy") return "Se alcanzó el límite del servicio (en el plan gratis es por minuto y por día). Intenta más tarde o ingresa la compra manualmente.";
     if (code === "size") return "Las fotos pesan demasiado. Prueba con menos fotos o más cerca del recibo.";
     if (code === "parse") return "No logré leer el recibo. Prueba con una foto más nítida y completa.";
-    if (code === "upstream") return "Error del servicio de Claude" + (e.detail ? ": " + e.detail : ".");
+    if (code === "upstream") return "Error del servicio de lectura" + (e.detail ? ": " + e.detail : ".");
     if (e && e.message === "img") return "No pude abrir esa imagen. Prueba con otra foto.";
     return "No se pudo leer el recibo. Revisa tu conexión e intenta de nuevo.";
   }
