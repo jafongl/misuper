@@ -1,0 +1,498 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Mi Súper</title>
+<meta name="theme-color" content="#1f7a4d">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Mi Súper">
+<link rel="apple-touch-icon" href="/icon.png">
+<link rel="icon" href="/icon.png">
+<style>
+:root {
+  --bg:#f6f5f1; --surface:#ffffff; --text:#1c1b18; --muted:#6b6a63; --line:#e5e3db;
+  --accent:#1f7a4d; --accent-ink:#ffffff; --accent-soft:#e3f1ea;
+  --danger:#b3261e; --warn:#7a5200; --warn-bg:#fff1cc;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px);
+  padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg:#141412; --surface:#1e1e1b; --text:#efeee8; --muted:#9c9b92; --line:#33332e;
+    --accent:#4cc58a; --accent-ink:#0b1f15; --accent-soft:#1c2e25;
+    --danger:#ff8a80; --warn:#f3c969; --warn-bg:#3a2f12;
+  }
+}
+:root[data-theme="dark"] {
+  --bg:#141412; --surface:#1e1e1b; --text:#efeee8; --muted:#9c9b92; --line:#33332e;
+  --accent:#4cc58a; --accent-ink:#0b1f15; --accent-soft:#1c2e25;
+  --danger:#ff8a80; --warn:#f3c969; --warn-bg:#3a2f12;
+}
+html { scroll-padding-top:env(safe-area-inset-top,0px); }
+*,*::before,*::after { box-sizing:border-box; }
+body { margin:0; background:var(--bg); color:var(--text); font:16px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; -webkit-text-size-adjust:100%; }
+.wrap { max-width:720px; margin:0 auto; padding:18px 16px 120px; }
+h1 { font-size:22px; margin:0 0 2px; letter-spacing:-.01em; }
+h2 { font-size:17px; margin:0 0 12px; }
+h3 { font-size:14px; margin:0 0 10px; color:var(--muted); font-weight:600; text-transform:uppercase; letter-spacing:.04em; }
+.sub { color:var(--muted); margin:0 0 16px; font-size:14px; }
+.card { background:var(--surface); border:1px solid var(--line); border-radius:16px; padding:16px; margin-bottom:12px; }
+button { font:inherit; color:inherit; cursor:pointer; }
+.btn { display:inline-flex; align-items:center; justify-content:center; gap:8px; border:0; border-radius:12px; padding:12px 16px; font-weight:600; background:var(--accent); color:var(--accent-ink); min-height:46px; }
+.btn.big { width:100%; padding:18px; font-size:17px; }
+.btn.ghost { background:transparent; color:var(--text); border:1px solid var(--line); }
+.btn.danger { background:transparent; color:var(--danger); border:1px solid var(--danger); }
+.btn:disabled { opacity:.5; cursor:not-allowed; }
+.stack { display:flex; flex-direction:column; gap:10px; }
+.row { display:flex; gap:10px; }
+.row > * { flex:1; min-width:0; }
+label { display:block; font-size:13px; color:var(--muted); }
+input, select, textarea { width:100%; font:inherit; color:var(--text); background:var(--bg); border:1px solid var(--line); border-radius:10px; padding:10px 12px; min-height:44px; margin-top:4px; }
+input:focus, select:focus, textarea:focus, button:focus-visible { outline:2px solid var(--accent); outline-offset:1px; }
+.chips { display:flex; gap:8px; overflow-x:auto; padding-bottom:4px; margin-bottom:12px; }
+.chip { flex:none; border:1px solid var(--line); background:var(--surface); border-radius:99px; padding:8px 14px; font-size:14px; }
+.chip[aria-pressed="true"] { background:var(--accent); border-color:var(--accent); color:var(--accent-ink); font-weight:600; }
+.kpis { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin-bottom:12px; }
+.kpi { background:var(--surface); border:1px solid var(--line); border-radius:14px; padding:12px; }
+.kpi b { display:block; font-size:19px; letter-spacing:-.01em; }
+.kpi span { font-size:12px; color:var(--muted); }
+.insight { background:var(--accent-soft); border-radius:14px; padding:12px 14px; margin-bottom:12px; font-size:15px; }
+.bar { height:8px; background:var(--line); border-radius:99px; overflow:hidden; margin-top:6px; }
+.bar > i { display:block; height:100%; border-radius:99px; }
+.line { display:flex; justify-content:space-between; gap:12px; align-items:baseline; }
+.line .n { min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.line .v { font-variant-numeric:tabular-nums; font-weight:600; white-space:nowrap; }
+.small { font-size:12px; color:var(--muted); }
+.dot { display:inline-block; width:10px; height:10px; border-radius:50%; margin-right:8px; }
+.catrow { display:block; width:100%; text-align:left; background:none; border:0; padding:8px 0; border-bottom:1px solid var(--line); }
+.catrow:last-child { border-bottom:0; }
+.catrow[aria-pressed="true"] { background:var(--accent-soft); border-radius:10px; padding-left:8px; padding-right:8px; }
+.prod { padding:8px 0; border-bottom:1px solid var(--line); }
+.prod:last-child { border-bottom:0; }
+.trend { display:flex; align-items:flex-end; gap:8px; height:110px; }
+.trend > div { flex:1; display:flex; flex-direction:column; align-items:center; justify-content:flex-end; height:100%; }
+.trend i { display:block; width:100%; max-width:38px; background:var(--accent); border-radius:6px 6px 0 0; min-height:2px; }
+.trend span { font-size:11px; color:var(--muted); margin-top:4px; }
+.hist { display:block; width:100%; text-align:left; background:var(--surface); border:1px solid var(--line); border-radius:14px; padding:12px 14px; margin-bottom:8px; }
+.item { border-top:1px solid var(--line); padding:10px 0; }
+.item:first-child { border-top:0; }
+textarea { min-height:140px; resize:vertical; font-size:13px; }
+.item .r2 { display:grid; grid-template-columns:64px 92px 1fr 44px; gap:8px; margin-top:6px; }
+.item .r2 input, .item .r2 select { margin-top:0; }
+.item .gen { margin-top:6px; }
+.item .gen input { min-height:38px; font-size:14px; }
+.icon { border:1px solid var(--line); background:transparent; border-radius:10px; min-height:44px; color:var(--muted); }
+.totalbar { display:flex; justify-content:space-between; align-items:center; font-size:18px; padding:12px 0 4px; }
+.warn { background:var(--warn-bg); color:var(--warn); border-radius:10px; padding:10px 12px; font-size:14px; margin:8px 0; }
+.warn:empty { display:none; }
+.err { background:var(--warn-bg); color:var(--warn); border-radius:12px; padding:12px 14px; margin-bottom:12px; font-size:14px; }
+.spin { width:38px; height:38px; border-radius:50%; border:4px solid var(--line); border-top-color:var(--accent); animation:sp 0.9s linear infinite; margin:8px auto 14px; }
+@keyframes sp { to { transform:rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .spin { animation-duration:3s; } }
+.center { text-align:center; }
+.nav { position:fixed; left:0; right:0; bottom:0; z-index:5; display:flex; gap:4px; background:var(--surface); border-top:1px solid var(--line); padding:6px 8px calc(6px + env(safe-area-inset-bottom,0px)); }
+.nav button { flex:1; background:none; border:0; border-radius:12px; padding:8px 4px; font-size:12px; color:var(--muted); display:flex; flex-direction:column; align-items:center; gap:2px; }
+.nav button span { font-size:20px; line-height:1; }
+.nav button[aria-current="page"] { color:var(--accent); font-weight:700; background:var(--accent-soft); }
+.toast { position:fixed; left:50%; transform:translateX(-50%); bottom:calc(86px + env(safe-area-inset-bottom,0px)); background:var(--text); color:var(--bg); padding:10px 16px; border-radius:99px; font-size:14px; z-index:9; max-width:90%; }
+.toast:empty { display:none; }
+.empty { text-align:center; padding:28px 12px; }
+.empty .big { font-size:44px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>🛒 Mi Súper</h1>
+  <p class="sub">Tus gastos del supermercado, ítem por ítem.</p>
+  <main id="main"></main>
+</div>
+
+<nav class="nav" aria-label="Secciones">
+  <button data-tab="resumen"><span>📊</span>Resumen</button>
+  <button data-tab="escanear"><span>📷</span>Agregar</button>
+  <button data-tab="historial"><span>🧾</span>Historial</button>
+</nav>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+<input type="file" id="cam" accept="image/*" capture="environment" hidden>
+<input type="file" id="gal" accept="image/*" multiple hidden>
+<input type="file" id="restore" accept="application/json,.json" hidden>
+
+<script>
+(function () {
+  "use strict";
+
+  var CATS = ["Frutas y verduras","Carnes y pescados","Lácteos y huevos","Panadería","Despensa","Bebidas","Snacks y dulces","Congelados","Limpieza del hogar","Cuidado personal","Mascotas","Otros"];
+  var COLORS = ["#3f9c5a","#c8553d","#e0a526","#b98a5c","#8b6bb8","#3b8fd0","#e0709a","#5bb5c9","#6f8f3d","#d98b3a","#8a7a6a","#a0a0a0"];
+  var KEY = "misuper:v1", CODE_KEY = "misuper:code";
+
+  function $(s) { return document.querySelector(s); }
+  function esc(s) { return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) { return ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"})[c]; }); }
+  function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 6); }
+  function num(v, d) { var n = parseFloat(String(v).replace(",", ".")); return isNaN(n) ? d : n; }
+  function r2(n) { return Math.round(n * 100) / 100; }
+  function todayStr() { var d = new Date(); return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0"); }
+  function isDate(s) { return /^\d{4}-\d{2}-\d{2}$/.test(String(s || "")); }
+  function money(n) { n = Number(n) || 0; var s = Math.abs(n).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 }); return (n < 0 ? "-" : "") + "$" + s; }
+  function fdate(s) { var d = new Date(s + "T00:00:00"); return isNaN(d) ? s : d.toLocaleDateString("es", { day: "numeric", month: "short", year: "numeric" }); }
+  function norm(s) { return String(s || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim().toLowerCase(); }
+  function catColor(c) { var i = CATS.indexOf(c); return COLORS[i < 0 ? CATS.length - 1 : i]; }
+
+  function load() { try { var r = localStorage.getItem(KEY); var a = r ? JSON.parse(r) : []; return Array.isArray(a) ? a : []; } catch (e) { return []; } }
+  function getCode() { try { return localStorage.getItem(CODE_KEY) || ""; } catch (e) { return ""; } }
+  function setCode(c) { try { if (c) localStorage.setItem(CODE_KEY, c); else localStorage.removeItem(CODE_KEY); } catch (e) {} }
+  var toastTimer;
+  function toast(msg) { var t = $("#toast"); t.textContent = msg; clearTimeout(toastTimer); toastTimer = setTimeout(function () { t.textContent = ""; }, 2800); }
+  function persist() { try { localStorage.setItem(KEY, JSON.stringify(state.purchases)); } catch (e) { toast("No se pudo guardar en este navegador"); } }
+
+  var state = { tab: "resumen", period: "mes", cat: null, purchases: load(), draft: null, scan: null, scanError: "", confirmWipe: false, code: getCode(), editCode: false };
+
+  // ---------- Lectura del recibo (vía /api/scan) ----------
+  function compress(file) {
+    return new Promise(function (resolve, reject) {
+      var url = URL.createObjectURL(file), img = new Image();
+      img.onload = function () {
+        URL.revokeObjectURL(url);
+        var w = img.naturalWidth, h = img.naturalHeight, sc = Math.min(1, 2000 / Math.max(w, h));
+        var c = document.createElement("canvas"); c.width = Math.round(w * sc); c.height = Math.round(h * sc);
+        c.getContext("2d").drawImage(img, 0, 0, c.width, c.height);
+        var q = 0.85, out = c.toDataURL("image/jpeg", q);
+        while (out.length > 1300000 && q > 0.4) { q -= 0.1; out = c.toDataURL("image/jpeg", q); }
+        resolve(out);
+      };
+      img.onerror = function () { URL.revokeObjectURL(url); reject(new Error("img")); };
+      img.src = url;
+    });
+  }
+
+  function fromScan(data) {
+    var raw = Array.isArray(data) ? { items: data } : (data || {});
+    var items = (Array.isArray(raw.items) ? raw.items : []).map(function (x) {
+      return {
+        name: String(x.nombre != null ? x.nombre : (x.name || "")).trim(),
+        generic: String(x.producto || "").trim(),
+        qty: num(x.cantidad, 1),
+        amount: r2(num(x.monto, 0)),
+        category: CATS.indexOf(x.categoria) >= 0 ? x.categoria : "Otros"
+      };
+    }).filter(function (it) { return it.name || it.amount; });
+    var tot = num(raw.total, NaN);
+    return { id: null, store: String(raw.tienda || "").trim(), date: isDate(raw.fecha) ? raw.fecha : todayStr(), receiptTotal: isNaN(tot) ? null : tot, items: items, source: "foto", returnTab: "resumen" };
+  }
+
+  function errCopy(e) {
+    var code = e && e.code;
+    if (code === "code") return "El código de acceso es incorrecto. Vuelve a ingresarlo.";
+    if (code === "config") return "Falta configurar ANTHROPIC_API_KEY o APP_CODE en Vercel.";
+    if (code === "busy") return "El servicio está ocupado. Intenta de nuevo en un momento.";
+    if (code === "size") return "Las fotos pesan demasiado. Prueba con menos fotos o más cerca del recibo.";
+    if (code === "parse") return "No logré leer el recibo. Prueba con una foto más nítida y completa.";
+    if (code === "upstream") return "Error del servicio de Claude" + (e.detail ? ": " + e.detail : ".");
+    if (e && e.message === "img") return "No pude abrir esa imagen. Prueba con otra foto.";
+    return "No se pudo leer el recibo. Revisa tu conexión e intenta de nuevo.";
+  }
+
+  function startScan(fileList) {
+    var files = Array.prototype.slice.call(fileList || [], 0, 3);
+    if (!files.length || !state.code) return;
+    var ctl = new AbortController();
+    state.scan = { ctl: ctl }; state.scanError = ""; state.tab = "escanear"; render();
+    Promise.all(files.map(compress)).then(function (images) {
+      return fetch("/api/scan", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ images: images, code: state.code }), signal: ctl.signal });
+    }).then(function (r) {
+      return r.json().catch(function () { return {}; }).then(function (j) {
+        if (!r.ok) { var er = new Error(j.error || "http"); er.code = j.error; er.detail = j.detail; er.status = r.status; throw er; }
+        return j;
+      });
+    }).then(function (data) {
+      state.scan = null;
+      var d = fromScan(data);
+      if (!d.items.length) { state.scanError = "No encontré productos en la foto. Prueba con una imagen más clara o ingresa la compra manualmente."; render(); return; }
+      state.draft = d; render(); window.scrollTo(0, 0);
+    }).catch(function (e) {
+      state.scan = null;
+      if (e && e.name === "AbortError") { render(); return; }
+      if (e && e.code === "code") { state.code = ""; setCode(""); }
+      state.scanError = errCopy(e); render();
+    });
+  }
+
+  // ---------- Análisis ----------
+  function inPeriod(p) {
+    if (state.period === "todo") return true;
+    var d = new Date(p.date + "T00:00:00"), now = new Date();
+    if (state.period === "mes") return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth();
+    var days = state.period === "30" ? 30 : 90;
+    return (now - d) / 86400000 <= days;
+  }
+  function sumItems(items) { return r2(items.reduce(function (s, it) { return s + (Number(it.amount) || 0); }, 0)); }
+  function purchaseTotal(p) { return sumItems(p.items); }
+
+  function analyze() {
+    var ps = state.purchases.filter(inPeriod), all = [];
+    ps.forEach(function (p) { p.items.forEach(function (it) { all.push({ name: it.name, generic: it.generic, qty: it.qty, amount: Number(it.amount) || 0, category: it.category, store: p.store, date: p.date }); }); });
+    var total = r2(all.reduce(function (s, i) { return s + i.amount; }, 0));
+    var byCat = {}, byStore = {};
+    all.forEach(function (i) { byCat[i.category] = (byCat[i.category] || 0) + i.amount; });
+    ps.forEach(function (p) { byStore[p.store] = (byStore[p.store] || 0) + purchaseTotal(p); });
+    var cats = Object.keys(byCat).map(function (c) { return { name: c, sum: r2(byCat[c]) }; }).sort(function (a, b) { return b.sum - a.sum; });
+    var stores = Object.keys(byStore).map(function (s) { return { name: s, sum: r2(byStore[s]) }; }).sort(function (a, b) { return b.sum - a.sum; });
+    var scoped = state.cat ? all.filter(function (i) { return i.category === state.cat; }) : all;
+    var g = {};
+    scoped.forEach(function (i) {
+      var label = (i.generic || i.name || "Sin nombre").trim(), k = norm(label);
+      if (!g[k]) g[k] = { name: label, sum: 0, times: 0, category: i.category };
+      g[k].sum += i.amount; g[k].times += 1;
+    });
+    var prods = Object.keys(g).map(function (k) { g[k].sum = r2(g[k].sum); return g[k]; }).sort(function (a, b) { return b.sum - a.sum; }).slice(0, 12);
+    return { ps: ps, total: total, cats: cats, stores: stores, prods: prods };
+  }
+
+  function monthly() {
+    var now = new Date(), out = [], map = {};
+    state.purchases.forEach(function (p) { var k = p.date.slice(0, 7); map[k] = (map[k] || 0) + purchaseTotal(p); });
+    for (var i = 5; i >= 0; i--) {
+      var d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      var k = d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0");
+      out.push({ label: d.toLocaleDateString("es", { month: "short" }).replace(".", ""), sum: r2(map[k] || 0) });
+    }
+    return out;
+  }
+
+  // ---------- Vistas ----------
+  function viewResumen() {
+    if (!state.purchases.length) {
+      return '<div class="card empty"><div class="big">🧾</div><h2>Aún no hay compras</h2><p class="sub">Toma una foto de tu recibo y verás en qué gastas más.</p><button class="btn" data-act="tab" data-tab="escanear">Agregar mi primera compra</button></div>';
+    }
+    var periods = [["mes","Este mes"],["30","30 días"],["90","3 meses"],["todo","Todo"]];
+    var html = '<div class="chips" role="group" aria-label="Período">' + periods.map(function (p) {
+      return '<button class="chip" data-act="period" data-p="' + p[0] + '" aria-pressed="' + (state.period === p[0]) + '">' + p[1] + '</button>';
+    }).join("") + '</div>';
+    var a = analyze();
+    if (!a.ps.length) return html + '<div class="card"><p class="sub" style="margin:0">No hay compras en este período.</p></div>';
+
+    html += '<div class="kpis"><div class="kpi"><b>' + money(a.total) + '</b><span>Total gastado</span></div>' +
+      '<div class="kpi"><b>' + a.ps.length + '</b><span>Compras</span></div>' +
+      '<div class="kpi"><b>' + money(a.total / a.ps.length) + '</b><span>Promedio por compra</span></div></div>';
+
+    var top = a.cats[0];
+    if (top && a.total > 0 && top.sum > 0) {
+      html += '<div class="insight">Lo que más se lleva tu dinero: <b>' + esc(top.name) + '</b> — ' + money(top.sum) + ' (' + Math.round(top.sum / a.total * 100) + '%).</div>';
+    }
+
+    var maxC = Math.max.apply(null, a.cats.map(function (c) { return Math.max(c.sum, 0); }).concat([1]));
+    html += '<div class="card"><h3>Por categoría</h3>' + a.cats.map(function (c) {
+      var pct = a.total > 0 ? Math.round(c.sum / a.total * 100) : 0;
+      return '<button class="catrow" data-act="cat" data-cat="' + esc(c.name) + '" aria-pressed="' + (state.cat === c.name) + '">' +
+        '<div class="line"><span class="n"><i class="dot" style="background:' + catColor(c.name) + '"></i>' + esc(c.name) + '</span><span class="v">' + money(c.sum) + ' <span class="small">· ' + pct + '%</span></span></div>' +
+        '<div class="bar"><i style="width:' + Math.max(0, c.sum) / maxC * 100 + '%;background:' + catColor(c.name) + '"></i></div></button>';
+    }).join("") + '<p class="small" style="margin:10px 0 0">Toca una categoría para ver sus productos.</p></div>';
+
+    var maxP = Math.max.apply(null, a.prods.map(function (p) { return Math.max(p.sum, 0); }).concat([1]));
+    html += '<div class="card"><h3>Productos donde más gastas' + (state.cat ? ' · ' + esc(state.cat) : '') + '</h3>';
+    if (state.cat) html += '<button class="chip" data-act="clear-cat" style="margin-bottom:10px">' + esc(state.cat) + ' ✕ Ver todas</button>';
+    html += a.prods.map(function (p) {
+      return '<div class="prod"><div class="line"><span class="n">' + esc(p.name) + '</span><span class="v">' + money(p.sum) + '</span></div>' +
+        '<div class="small">' + p.times + (p.times === 1 ? ' vez' : ' veces') + ' · ' + esc(p.category) + '</div>' +
+        '<div class="bar"><i style="width:' + Math.max(0, p.sum) / maxP * 100 + '%;background:' + catColor(p.category) + '"></i></div></div>';
+    }).join("") + '</div>';
+
+    if (a.stores.length) {
+      html += '<div class="card"><h3>Por tienda</h3>' + a.stores.map(function (s) {
+        return '<div class="line prod"><span class="n">' + esc(s.name) + '</span><span class="v">' + money(s.sum) + '</span></div>';
+      }).join("") + '</div>';
+    }
+
+    var m = monthly(), maxM = Math.max.apply(null, m.map(function (x) { return x.sum; }).concat([1]));
+    html += '<div class="card"><h3>Últimos 6 meses</h3><div class="trend">' + m.map(function (x) {
+      return '<div title="' + money(x.sum) + '"><i style="height:' + Math.max(2, x.sum / maxM * 88) + 'px"></i><span>' + esc(x.label) + '</span></div>';
+    }).join("") + '</div></div>';
+    return html;
+  }
+
+  function viewEscanear() {
+    var html = "";
+    if (state.scanError) html += '<div class="err" role="alert">' + esc(state.scanError) + '</div>';
+    if (state.scan) {
+      return html + '<div class="card center"><div class="spin" aria-hidden="true"></div><h2>Leyendo tu recibo…</h2><p class="sub">Puede tardar unos segundos.</p><button class="btn ghost" data-act="cancel-scan">Cancelar</button></div>';
+    }
+    html += '<div class="card"><h2>Agregar compra</h2><div class="stack">';
+    if (!state.code || state.editCode) {
+      html += '<label>Código de acceso<input id="codein" type="password" autocomplete="off" autocapitalize="off" placeholder="El APP_CODE que configuraste"></label>' +
+        '<button class="btn" data-act="save-code">Guardar código</button>' +
+        '<p class="small" style="margin:0">Se pide una sola vez y se guarda en este dispositivo.</p>';
+    } else {
+      html += '<button class="btn big" data-act="cam">📷 Tomar foto del recibo</button>' +
+        '<button class="btn ghost" data-act="gal">🖼️ Elegir de la galería (hasta 3 fotos)</button>' +
+        '<p class="small" style="margin:0">Pon el recibo sobre una superficie plana, con buena luz y completo en la foto. Si es muy largo, toma varias fotos y elígelas juntas desde la galería.</p>';
+    }
+    html += '<button class="btn ghost" data-act="manual">✍️ Ingresar manualmente</button>';
+    if (state.code && !state.editCode) html += '<button class="chip" data-act="edit-code" style="align-self:flex-start">Cambiar código</button>';
+    html += '</div></div>';
+    return html;
+  }
+
+  function itemRow(it, i) {
+    return '<div class="item" data-i="' + i + '">' +
+      '<input data-k="name" value="' + esc(it.name) + '" placeholder="Producto" aria-label="Producto">' +
+      '<div class="gen"><input data-k="generic" value="' + esc(it.generic || "") + '" placeholder="Agrupar como (ej. Leche)" aria-label="Agrupar como"></div>' +
+      '<div class="r2">' +
+      '<input data-k="qty" type="number" inputmode="decimal" step="any" value="' + esc(it.qty) + '" aria-label="Cantidad" title="Cantidad">' +
+      '<input data-k="amount" type="number" inputmode="decimal" step="0.01" value="' + esc(it.amount) + '" aria-label="Monto" title="Monto">' +
+      '<select data-k="category" aria-label="Categoría">' + CATS.map(function (c) { return '<option' + (c === it.category ? ' selected' : '') + '>' + esc(c) + '</option>'; }).join("") + '</select>' +
+      '<button class="icon" data-act="del-item" aria-label="Quitar ítem">✕</button></div></div>';
+  }
+
+  function viewDraft() {
+    var d = state.draft;
+    return '<div class="card"><h2>' + (d.id ? "Editar compra" : (d.source === "foto" ? "Revisa lo que leí" : "Nueva compra")) + '</h2>' +
+      (d.source === "foto" && !d.id ? '<p class="sub">Corrige lo que haga falta antes de guardar.</p>' : "") +
+      '<div class="row"><label>Tienda<input data-f="store" value="' + esc(d.store) + '" placeholder="Ej. Super 99"></label>' +
+      '<label>Fecha<input type="date" data-f="date" value="' + esc(d.date) + '"></label></div>' +
+      '<div style="margin-top:10px">' + d.items.map(itemRow).join("") + '</div>' +
+      '<button class="btn ghost" data-act="add-item" style="width:100%;margin-top:6px">+ Agregar ítem</button>' +
+      '<div class="totalbar"><span>Total</span><strong id="dsum">' + money(sumItems(d.items)) + '</strong></div>' +
+      '<div class="warn" id="dwarn"></div>' +
+      '<div class="row" style="margin-top:8px"><button class="btn ghost" data-act="cancel">Cancelar</button><button class="btn" data-act="save">Guardar</button></div>' +
+      (d.id ? '<button class="btn danger" data-act="delete" style="width:100%;margin-top:10px">' + (d.confirmDel ? "¿Seguro? Toca otra vez para borrar" : "Borrar compra") + '</button>' : "") +
+      '</div>';
+  }
+
+  function updateTotals() {
+    var d = state.draft; if (!d) return;
+    var s = sumItems(d.items), el = $("#dsum"), w = $("#dwarn");
+    if (el) el.textContent = money(s);
+    if (w) w.textContent = (d.receiptTotal != null && Math.abs(s - d.receiptTotal) > 0.02)
+      ? "El recibo indica un total de " + money(d.receiptTotal) + " y la suma de los ítems es " + money(s) + ". Revisa que no falte o sobre algún ítem." : "";
+  }
+
+  function viewHistorial() {
+    var list = state.purchases.slice().sort(function (a, b) { return b.date.localeCompare(a.date); });
+    var html = "";
+    if (!list.length) html += '<div class="card empty"><div class="big">🧾</div><p class="sub" style="margin:0">Todavía no has guardado compras.</p></div>';
+    html += list.map(function (p) {
+      return '<button class="hist" data-act="open" data-id="' + esc(p.id) + '"><div class="line"><span class="n"><b>' + esc(p.store) + '</b></span><span class="v">' + money(purchaseTotal(p)) + '</span></div>' +
+        '<div class="small">' + fdate(p.date) + ' · ' + p.items.length + ' ítems</div></button>';
+    }).join("");
+    html += '<div class="card"><h3>Datos</h3><div class="stack">';
+    if (state.purchases.length) html += '<button class="btn ghost" data-act="csv">Exportar a CSV (Excel)</button><button class="btn ghost" data-act="backup">Guardar respaldo (JSON)</button>';
+    html += '<button class="btn ghost" data-act="restore">Restaurar respaldo</button>';
+    if (state.purchases.length) html += '<button class="btn danger" data-act="wipe">' + (state.confirmWipe ? "¿Seguro? Toca otra vez para borrar todo" : "Borrar todos los datos") + '</button>';
+    html += '<p class="small" style="margin:0">Tus compras se guardan en este dispositivo. En iPhone, agrega la app a la pantalla de inicio (Compartir → Añadir a inicio) para que Safari no borre los datos, y haz un respaldo de vez en cuando.</p></div></div>';
+    return html;
+  }
+
+  function render() {
+    document.querySelectorAll(".nav button").forEach(function (b) { b.setAttribute("aria-current", b.dataset.tab === state.tab ? "page" : "false"); });
+    var html;
+    if (state.draft) html = viewDraft();
+    else if (state.tab === "escanear") html = viewEscanear();
+    else if (state.tab === "historial") html = viewHistorial();
+    else html = viewResumen();
+    $("#main").innerHTML = html;
+    if (state.draft) updateTotals();
+  }
+
+  // ---------- Acciones ----------
+  function toCSV() {
+    var rows = [["fecha","tienda","producto","articulo","cantidad","categoria","monto"]];
+    state.purchases.slice().sort(function (a, b) { return a.date.localeCompare(b.date); }).forEach(function (p) {
+      p.items.forEach(function (it) { rows.push([p.date, p.store, it.generic || it.name, it.name, it.qty, it.category, Number(it.amount).toFixed(2)]); });
+    });
+    return "\ufeff" + rows.map(function (r) { return r.map(function (v) { return '"' + String(v).replace(/"/g, '""') + '"'; }).join(","); }).join("\n");
+  }
+  function saveFile(name, data, type) {
+    var url = URL.createObjectURL(new Blob([data], { type: type })), a = document.createElement("a");
+    a.href = url; a.download = name; document.body.appendChild(a); a.click();
+    setTimeout(function () { URL.revokeObjectURL(url); a.remove(); }, 1500);
+  }
+
+  function saveDraft() {
+    var d = state.draft;
+    var items = d.items.filter(function (it) { return String(it.name).trim() || Number(it.amount); }).map(function (it) {
+      return { name: String(it.name).trim() || "Sin nombre", generic: String(it.generic || "").trim(), qty: Number(it.qty) || 1, amount: r2(Number(it.amount) || 0), category: CATS.indexOf(it.category) >= 0 ? it.category : "Otros" };
+    });
+    if (!items.length) { toast("Agrega al menos un ítem"); return; }
+    var rec = { id: d.id || uid(), store: String(d.store).trim() || "Sin tienda", date: isDate(d.date) ? d.date : todayStr(), items: items, source: d.source };
+    var idx = state.purchases.findIndex(function (p) { return p.id === rec.id; });
+    if (idx >= 0) state.purchases[idx] = rec; else state.purchases.push(rec);
+    persist();
+    state.tab = d.returnTab || "resumen"; state.draft = null;
+    render(); window.scrollTo(0, 0); toast("Compra guardada");
+  }
+
+  document.addEventListener("click", function (e) {
+    var t = e.target.closest("[data-act],[data-tab]"); if (!t) return;
+    var act = t.dataset.act;
+    if (!act && t.dataset.tab) { state.tab = t.dataset.tab; state.draft = null; state.confirmWipe = false; state.scanError = ""; state.editCode = false; render(); window.scrollTo(0, 0); return; }
+    switch (act) {
+      case "tab": state.tab = t.dataset.tab; render(); window.scrollTo(0, 0); break;
+      case "period": state.period = t.dataset.p; render(); break;
+      case "cat": state.cat = state.cat === t.dataset.cat ? null : t.dataset.cat; render(); break;
+      case "clear-cat": state.cat = null; render(); break;
+      case "cam": $("#cam").click(); break;
+      case "gal": $("#gal").click(); break;
+      case "cancel-scan": if (state.scan) state.scan.ctl.abort(); break;
+      case "save-code":
+        var v = ($("#codein") || {}).value || "";
+        if (!v.trim()) { toast("Escribe el código"); break; }
+        state.code = v.trim(); setCode(state.code); state.editCode = false; state.scanError = ""; render(); break;
+      case "edit-code": state.editCode = true; render(); break;
+      case "manual": state.draft = { id: null, store: "", date: todayStr(), receiptTotal: null, items: [{ name: "", generic: "", qty: 1, amount: 0, category: "Otros" }], source: "manual", returnTab: "resumen" }; render(); window.scrollTo(0, 0); break;
+      case "add-item": state.draft.items.push({ name: "", generic: "", qty: 1, amount: 0, category: "Otros" }); render(); break;
+      case "del-item": var row = t.closest(".item"); state.draft.items.splice(+row.dataset.i, 1); render(); break;
+      case "cancel": state.draft = null; render(); break;
+      case "save": saveDraft(); break;
+      case "delete":
+        if (!state.draft.confirmDel) { state.draft.confirmDel = true; render(); break; }
+        var delId = state.draft.id;
+        state.purchases = state.purchases.filter(function (p) { return p.id !== delId; });
+        persist(); state.draft = null; render(); toast("Compra borrada"); break;
+      case "open":
+        var p = state.purchases.find(function (x) { return x.id === t.dataset.id; }); if (!p) break;
+        state.draft = { id: p.id, store: p.store, date: p.date, receiptTotal: null, source: p.source || "manual", returnTab: "historial", items: p.items.map(function (i) { return { name: i.name, generic: i.generic || "", qty: i.qty, amount: i.amount, category: i.category }; }) };
+        render(); window.scrollTo(0, 0); break;
+      case "csv": saveFile("gastos-supermercado.csv", toCSV(), "text/csv;charset=utf-8"); break;
+      case "backup": saveFile("mi-super-respaldo.json", JSON.stringify(state.purchases), "application/json"); break;
+      case "restore": $("#restore").click(); break;
+      case "wipe":
+        if (!state.confirmWipe) { state.confirmWipe = true; render(); break; }
+        state.purchases = []; state.confirmWipe = false; persist(); render(); toast("Datos borrados"); break;
+    }
+  });
+
+  document.addEventListener("input", function (e) {
+    var t = e.target, d = state.draft; if (!d || !$("#main").contains(t)) return;
+    if (t.dataset.f) { d[t.dataset.f] = t.value; return; }
+    var row = t.closest(".item"), k = t.dataset.k; if (!row || !k) return;
+    var it = d.items[+row.dataset.i], v = t.value;
+    if (k === "qty" || k === "amount") v = num(v, 0);
+    it[k] = v;
+    if (k === "amount") updateTotals();
+  });
+
+  $("#cam").addEventListener("change", function (e) { startScan(e.target.files); e.target.value = ""; });
+  $("#gal").addEventListener("change", function (e) { startScan(e.target.files); e.target.value = ""; });
+  $("#restore").addEventListener("change", function (e) {
+    var f = e.target.files && e.target.files[0]; e.target.value = ""; if (!f) return;
+    var rd = new FileReader();
+    rd.onload = function () {
+      try {
+        var arr = JSON.parse(rd.result);
+        if (!Array.isArray(arr)) throw new Error("bad");
+        var ok = arr.filter(function (p) { return p && p.id && isDate(p.date) && Array.isArray(p.items); });
+        var ids = {}; state.purchases.forEach(function (p) { ids[p.id] = true; });
+        var added = 0; ok.forEach(function (p) { if (!ids[p.id]) { state.purchases.push(p); added++; } });
+        persist(); render(); toast(added + " compras restauradas");
+      } catch (err) { toast("El archivo no es un respaldo válido"); }
+    };
+    rd.readAsText(f);
+  });
+
+  render();
+})();
+</script>
+</body>
+</html>
