@@ -126,6 +126,7 @@ textarea { min-height:140px; resize:vertical; font-size:13px; }
 
   var CATS = ["Frutas y verduras","Carnes y pescados","Lácteos y huevos","Panadería","Despensa","Bebidas","Snacks y dulces","Congelados","Limpieza del hogar","Cuidado personal","Mascotas","Otros"];
   var COLORS = ["#3f9c5a","#c8553d","#e0a526","#b98a5c","#8b6bb8","#3b8fd0","#e0709a","#5bb5c9","#6f8f3d","#d98b3a","#8a7a6a","#a0a0a0"];
+  var PAYMENTS = ["VISA Jose","VISA Irina","Efectivo","VALE"];
   var KEY = "misuper:v1", CODE_KEY = "misuper:code";
 
   function $(s) { return document.querySelector(s); }
@@ -179,7 +180,7 @@ textarea { min-height:140px; resize:vertical; font-size:13px; }
       };
     }).filter(function (it) { return it.name || it.amount; });
     var tot = num(raw.total, NaN);
-    return { id: null, store: String(raw.tienda || "").trim(), date: isDate(raw.fecha) ? raw.fecha : todayStr(), receiptTotal: isNaN(tot) ? null : tot, items: items, source: "foto", returnTab: "resumen" };
+    return { id: null, store: String(raw.tienda || "").trim(), date: isDate(raw.fecha) ? raw.fecha : todayStr(), receiptTotal: isNaN(tot) ? null : tot, items: items, payment: "", source: "foto", returnTab: "resumen" };
   }
 
   function errCopy(e) {
@@ -237,6 +238,9 @@ textarea { min-height:140px; resize:vertical; font-size:13px; }
     var byCat = {}, byStore = {};
     all.forEach(function (i) { byCat[i.category] = (byCat[i.category] || 0) + i.amount; });
     ps.forEach(function (p) { byStore[p.store] = (byStore[p.store] || 0) + purchaseTotal(p); });
+    var byPay = {};
+    ps.forEach(function (p) { var k = p.payment || "Sin especificar"; byPay[k] = (byPay[k] || 0) + purchaseTotal(p); });
+    var pays = Object.keys(byPay).map(function (k) { return { name: k, sum: r2(byPay[k]) }; }).sort(function (a, b) { return b.sum - a.sum; });
     var cats = Object.keys(byCat).map(function (c) { return { name: c, sum: r2(byCat[c]) }; }).sort(function (a, b) { return b.sum - a.sum; });
     var stores = Object.keys(byStore).map(function (s) { return { name: s, sum: r2(byStore[s]) }; }).sort(function (a, b) { return b.sum - a.sum; });
     var scoped = state.cat ? all.filter(function (i) { return i.category === state.cat; }) : all;
@@ -247,7 +251,7 @@ textarea { min-height:140px; resize:vertical; font-size:13px; }
       g[k].sum += i.amount; g[k].times += 1;
     });
     var prods = Object.keys(g).map(function (k) { g[k].sum = r2(g[k].sum); return g[k]; }).sort(function (a, b) { return b.sum - a.sum; }).slice(0, 12);
-    return { ps: ps, total: total, cats: cats, stores: stores, prods: prods };
+    return { ps: ps, total: total, cats: cats, stores: stores, pays: pays, prods: prods };
   }
 
   function monthly() {
@@ -298,6 +302,14 @@ textarea { min-height:140px; resize:vertical; font-size:13px; }
         '<div class="small">' + p.times + (p.times === 1 ? ' vez' : ' veces') + ' · ' + esc(p.category) + '</div>' +
         '<div class="bar"><i style="width:' + Math.max(0, p.sum) / maxP * 100 + '%;background:' + catColor(p.category) + '"></i></div></div>';
     }).join("") + '</div>';
+
+    if (a.pays.length) {
+      var maxY = Math.max.apply(null, a.pays.map(function (y) { return Math.max(y.sum, 0); }).concat([1]));
+      html += '<div class="card"><h3>Por método de pago</h3>' + a.pays.map(function (y) {
+        return '<div class="prod"><div class="line"><span class="n">' + esc(y.name) + '</span><span class="v">' + money(y.sum) + '</span></div>' +
+          '<div class="bar"><i style="width:' + Math.max(0, y.sum) / maxY * 100 + '%;background:var(--accent)"></i></div></div>';
+      }).join("") + '</div>';
+    }
 
     if (a.stores.length) {
       html += '<div class="card"><h3>Por tienda</h3>' + a.stores.map(function (s) {
@@ -351,6 +363,7 @@ textarea { min-height:140px; resize:vertical; font-size:13px; }
       (d.source === "foto" && !d.id ? '<p class="sub">Corrige lo que haga falta antes de guardar.</p>' : "") +
       '<div class="row"><label>Tienda<input data-f="store" value="' + esc(d.store) + '" placeholder="Ej. Super 99"></label>' +
       '<label>Fecha<input type="date" data-f="date" value="' + esc(d.date) + '"></label></div>' +
+      '<label style="margin-top:10px">Método de pago<select data-f="payment"><option value="">Elegir…</option>' + PAYMENTS.map(function (x) { return '<option' + (x === d.payment ? ' selected' : '') + '>' + esc(x) + '</option>'; }).join("") + '</select></label>' +
       '<div style="margin-top:10px">' + d.items.map(itemRow).join("") + '</div>' +
       '<button class="btn ghost" data-act="add-item" style="width:100%;margin-top:6px">+ Agregar ítem</button>' +
       '<div class="totalbar"><span>Total</span><strong id="dsum">' + money(sumItems(d.items)) + '</strong></div>' +
@@ -374,7 +387,7 @@ textarea { min-height:140px; resize:vertical; font-size:13px; }
     if (!list.length) html += '<div class="card empty"><div class="big">🧾</div><p class="sub" style="margin:0">Todavía no has guardado compras.</p></div>';
     html += list.map(function (p) {
       return '<button class="hist" data-act="open" data-id="' + esc(p.id) + '"><div class="line"><span class="n"><b>' + esc(p.store) + '</b></span><span class="v">' + money(purchaseTotal(p)) + '</span></div>' +
-        '<div class="small">' + fdate(p.date) + ' · ' + p.items.length + ' ítems</div></button>';
+        '<div class="small">' + fdate(p.date) + ' · ' + p.items.length + ' ítems' + (p.payment ? ' · ' + esc(p.payment) : '') + '</div></button>';
     }).join("");
     html += '<div class="card"><h3>Datos</h3><div class="stack">';
     if (state.purchases.length) html += '<button class="btn ghost" data-act="csv">Exportar a CSV (Excel)</button><button class="btn ghost" data-act="backup">Guardar respaldo (JSON)</button>';
@@ -397,9 +410,9 @@ textarea { min-height:140px; resize:vertical; font-size:13px; }
 
   // ---------- Acciones ----------
   function toCSV() {
-    var rows = [["fecha","tienda","producto","articulo","cantidad","categoria","monto"]];
+    var rows = [["fecha","tienda","metodo_pago","producto","articulo","cantidad","categoria","monto"]];
     state.purchases.slice().sort(function (a, b) { return a.date.localeCompare(b.date); }).forEach(function (p) {
-      p.items.forEach(function (it) { rows.push([p.date, p.store, it.generic || it.name, it.name, it.qty, it.category, Number(it.amount).toFixed(2)]); });
+      p.items.forEach(function (it) { rows.push([p.date, p.store, p.payment || "", it.generic || it.name, it.name, it.qty, it.category, Number(it.amount).toFixed(2)]); });
     });
     return "\ufeff" + rows.map(function (r) { return r.map(function (v) { return '"' + String(v).replace(/"/g, '""') + '"'; }).join(","); }).join("\n");
   }
@@ -415,7 +428,8 @@ textarea { min-height:140px; resize:vertical; font-size:13px; }
       return { name: String(it.name).trim() || "Sin nombre", generic: String(it.generic || "").trim(), qty: Number(it.qty) || 1, amount: r2(Number(it.amount) || 0), category: CATS.indexOf(it.category) >= 0 ? it.category : "Otros" };
     });
     if (!items.length) { toast("Agrega al menos un ítem"); return; }
-    var rec = { id: d.id || uid(), store: String(d.store).trim() || "Sin tienda", date: isDate(d.date) ? d.date : todayStr(), items: items, source: d.source };
+    if (!d.id && !d.payment) { toast("Elige el método de pago"); return; }
+    var rec = { id: d.id || uid(), store: String(d.store).trim() || "Sin tienda", date: isDate(d.date) ? d.date : todayStr(), payment: d.payment || "", items: items, source: d.source };
     var idx = state.purchases.findIndex(function (p) { return p.id === rec.id; });
     if (idx >= 0) state.purchases[idx] = rec; else state.purchases.push(rec);
     persist();
@@ -440,7 +454,7 @@ textarea { min-height:140px; resize:vertical; font-size:13px; }
         if (!v.trim()) { toast("Escribe el código"); break; }
         state.code = v.trim(); setCode(state.code); state.editCode = false; state.scanError = ""; render(); break;
       case "edit-code": state.editCode = true; render(); break;
-      case "manual": state.draft = { id: null, store: "", date: todayStr(), receiptTotal: null, items: [{ name: "", generic: "", qty: 1, amount: 0, category: "Otros" }], source: "manual", returnTab: "resumen" }; render(); window.scrollTo(0, 0); break;
+      case "manual": state.draft = { id: null, store: "", date: todayStr(), receiptTotal: null, items: [{ name: "", generic: "", qty: 1, amount: 0, category: "Otros" }], payment: "", source: "manual", returnTab: "resumen" }; render(); window.scrollTo(0, 0); break;
       case "add-item": state.draft.items.push({ name: "", generic: "", qty: 1, amount: 0, category: "Otros" }); render(); break;
       case "del-item": var row = t.closest(".item"); state.draft.items.splice(+row.dataset.i, 1); render(); break;
       case "cancel": state.draft = null; render(); break;
@@ -452,7 +466,7 @@ textarea { min-height:140px; resize:vertical; font-size:13px; }
         persist(); state.draft = null; render(); toast("Compra borrada"); break;
       case "open":
         var p = state.purchases.find(function (x) { return x.id === t.dataset.id; }); if (!p) break;
-        state.draft = { id: p.id, store: p.store, date: p.date, receiptTotal: null, source: p.source || "manual", returnTab: "historial", items: p.items.map(function (i) { return { name: i.name, generic: i.generic || "", qty: i.qty, amount: i.amount, category: i.category }; }) };
+        state.draft = { id: p.id, store: p.store, date: p.date, payment: p.payment || "", receiptTotal: null, source: p.source || "manual", returnTab: "historial", items: p.items.map(function (i) { return { name: i.name, generic: i.generic || "", qty: i.qty, amount: i.amount, category: i.category }; }) };
         render(); window.scrollTo(0, 0); break;
       case "csv": saveFile("gastos-supermercado.csv", toCSV(), "text/csv;charset=utf-8"); break;
       case "backup": saveFile("mi-super-respaldo.json", JSON.stringify(state.purchases), "application/json"); break;
