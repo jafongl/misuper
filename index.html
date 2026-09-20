@@ -148,7 +148,67 @@ textarea { min-height:140px; resize:vertical; font-size:13px; }
   function toast(msg) { var t = $("#toast"); t.textContent = msg; clearTimeout(toastTimer); toastTimer = setTimeout(function () { t.textContent = ""; }, 2800); }
   function persist() { try { localStorage.setItem(KEY, JSON.stringify(state.purchases)); } catch (e) { toast("No se pudo guardar en este navegador"); } }
 
-  var state = { tab: "resumen", period: "mes", cat: null, purchases: load(), draft: null, scan: null, scanError: "", confirmWipe: false, code: getCode(), editCode: false };
+  var SYNC_KEY = "misuper:synced", PEND_KEY = "misuper:pending";
+  function isSynced() { try { return !!localStorage.getItem(SYNC_KEY); } catch (e) { return false; } }
+  function markSynced() { try { localStorage.setItem(SYNC_KEY, "1"); } catch (e) {} }
+  function getPend() { try { var p = JSON.parse(localStorage.getItem(PEND_KEY)); return { s: (p && p.s) || [], d: (p && p.d) || [] }; } catch (e) { return { s: [], d: [] }; } }
+  function setPend(p) { try { localStorage.setItem(PEND_KEY, JSON.stringify(p)); } catch (e) {} }
+  function validPurchase(p) { return p && p.id && isDate(p.date) && Array.isArray(p.items); }
+  function chunk(arr, n) { var out = []; for (var i = 0; i < arr.length; i += n) out.push(arr.slice(i, i + n)); return out; }
+
+  var state = { tab: "resumen", period: "mes", cat: null, purchases: load(), draft: null, scan: null, scanError: "", confirmWipe: false, code: getCode(), editCode: false, sync: "off", syncing: false };
+
+  // ---------- Sincronización entre dispositivos (vía /api/data) ----------
+  function api(op, payload) {
+    return fetch("/api/data", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(Object.assign({ op: op, code: state.code }, payload || {})) }).then(function (r) {
+      return r.json().catch(function () { return {}; }).then(function (j) {
+        if (!r.ok) { var e = new Error(j.error || "http"); e.code = j.error; e.status = r.status; throw e; }
+        return j;
+      });
+    });
+  }
+  function handleSyncErr(e) {
+    if (e && e.code === "nostore") state.sync = "nostore";
+    else if (e && e.code === "code") { state.code = ""; setCode(""); state.sync = "off"; toast("El código de acceso es incorrecto"); }
+    else state.sync = "error";
+  }
+  function flush() {
+    var pend = getPend();
+    if (!pend.s.length && !pend.d.length) return Promise.resolve();
+    var saves = state.purchases.filter(function (p) { return pend.s.indexOf(p.id) >= 0; });
+    var chain = Promise.resolve();
+    chunk(saves, 50).forEach(function (c) { chain = chain.then(function () { return api("bulk", { purchases: c }); }); });
+    if (pend.d.length) chain = chain.then(function () { return api("delete_many", { ids: pend.d }); });
+    return chain.then(function () {
+      var cur = getPend();
+      setPend({ s: cur.s.filter(function (x) { return pend.s.indexOf(x) < 0; }), d: cur.d.filter(function (x) { return pend.d.indexOf(x) < 0; }) });
+    });
+  }
+  function syncNow() {
+    if (!state.code || state.syncing || state.sync === "nostore") return Promise.resolve();
+    state.syncing = true;
+    var first = !isSynced();
+    return flush().then(function () { return api("list"); }).then(function (res) {
+      var server = (res.purchases || []).filter(validPurchase), sids = {};
+      server.forEach(function (p) { sids[p.id] = true; });
+      var extra = first ? state.purchases.filter(function (p) { return validPurchase(p) && !sids[p.id]; }) : [];
+      var up = Promise.resolve();
+      chunk(extra, 50).forEach(function (c) { up = up.then(function () { return api("bulk", { purchases: c }); }); });
+      return up.then(function () {
+        markSynced();
+        var pend = getPend();
+        var keepLocal = state.purchases.filter(function (p) { return pend.s.indexOf(p.id) >= 0 && !sids[p.id]; });
+        var merged = server.filter(function (p) { return pend.d.indexOf(p.id) < 0; }).concat(extra, keepLocal.filter(function (p) { return extra.indexOf(p) < 0; }));
+        state.purchases = merged; persist(); state.sync = "ok";
+      });
+    }).catch(handleSyncErr).then(function () { state.syncing = false; if (!state.draft && !state.scan) render(); });
+  }
+  function trySync() {
+    if (!state.code || state.sync === "nostore") return Promise.resolve();
+    return flush().then(function () { state.sync = "ok"; }).catch(handleSyncErr).then(function () { if (!state.draft && !state.scan) render(); });
+  }
+  function pushSave(id) { var p = getPend(); if (p.s.indexOf(id) < 0) p.s.push(id); p.d = p.d.filter(function (x) { return x !== id; }); setPend(p); return trySync(); }
+  function pushDelete(id) { var p = getPend(); if (p.d.indexOf(id) < 0) p.d.push(id); p.s = p.s.filter(function (x) { return x !== id; }); setPend(p); return trySync(); }
 
   // ---------- Lectura del recibo (vía /api/scan) ----------
   function compress(file) {
@@ -266,7 +326,13 @@ textarea { min-height:140px; resize:vertical; font-size:13px; }
   }
 
   // ---------- Vistas ----------
-  function viewResumen() {
+  function codeCard() {
+    return '<div class="card"><h2>Sincroniza tus compras</h2><p class="sub">Ingresa tu código de acceso para ver tus compras en este dispositivo.</p>' +
+      '<label>Código de acceso<input id="codein" type="password" autocomplete="off" autocapitalize="off" placeholder="El APP_CODE que configuraste"></label>' +
+      '<button class="btn" data-act="save-code" style="width:100%;margin-top:10px">Guardar código</button></div>';
+  }
+  function viewResumen() { return (state.code ? "" : codeCard()) + viewResumenBody(); }
+  function viewResumenBody() {
     if (!state.purchases.length) {
       return '<div class="card empty"><div class="big">🧾</div><h2>Aún no hay compras</h2><p class="sub">Toma una foto de tu recibo y verás en qué gastas más.</p><button class="btn" data-act="tab" data-tab="escanear">Agregar mi primera compra</button></div>';
     }
@@ -381,6 +447,12 @@ textarea { min-height:140px; resize:vertical; font-size:13px; }
       ? "El recibo indica un total de " + money(d.receiptTotal) + " y la suma de los ítems es " + money(s) + ". Revisa que no falte o sobre algún ítem." : "";
   }
 
+  function syncNote() {
+    if (state.sync === "ok") return "Sincronizado: verás las mismas compras en cualquier dispositivo donde ingreses tu código. Haz un respaldo de vez en cuando.";
+    if (state.sync === "nostore") return "Tus compras se guardan solo en este dispositivo (falta conectar la base de datos en Vercel). En iPhone, agrega la app a la pantalla de inicio y haz respaldos de vez en cuando.";
+    if (state.sync === "error") return "No se pudo sincronizar; se reintentará al abrir la app. Tus compras están a salvo en este dispositivo.";
+    return state.code ? "Sincronizando…" : "Ingresa tu código de acceso en Resumen o Agregar para sincronizar.";
+  }
   function viewHistorial() {
     var list = state.purchases.slice().sort(function (a, b) { return b.date.localeCompare(a.date); });
     var html = "";
@@ -393,7 +465,7 @@ textarea { min-height:140px; resize:vertical; font-size:13px; }
     if (state.purchases.length) html += '<button class="btn ghost" data-act="csv">Exportar a CSV (Excel)</button><button class="btn ghost" data-act="backup">Guardar respaldo (JSON)</button>';
     html += '<button class="btn ghost" data-act="restore">Restaurar respaldo</button>';
     if (state.purchases.length) html += '<button class="btn danger" data-act="wipe">' + (state.confirmWipe ? "¿Seguro? Toca otra vez para borrar todo" : "Borrar todos los datos") + '</button>';
-    html += '<p class="small" style="margin:0">Tus compras se guardan en este dispositivo. En iPhone, agrega la app a la pantalla de inicio (Compartir → Añadir a inicio) para que Safari no borre los datos, y haz un respaldo de vez en cuando.</p></div></div>';
+    html += '<p class="small" style="margin:0">' + syncNote() + '</p></div></div>';
     return html;
   }
 
@@ -432,7 +504,7 @@ textarea { min-height:140px; resize:vertical; font-size:13px; }
     var rec = { id: d.id || uid(), store: String(d.store).trim() || "Sin tienda", date: isDate(d.date) ? d.date : todayStr(), payment: d.payment || "", items: items, source: d.source };
     var idx = state.purchases.findIndex(function (p) { return p.id === rec.id; });
     if (idx >= 0) state.purchases[idx] = rec; else state.purchases.push(rec);
-    persist();
+    persist(); pushSave(rec.id);
     state.tab = d.returnTab || "resumen"; state.draft = null;
     render(); window.scrollTo(0, 0); toast("Compra guardada");
   }
@@ -452,7 +524,7 @@ textarea { min-height:140px; resize:vertical; font-size:13px; }
       case "save-code":
         var v = ($("#codein") || {}).value || "";
         if (!v.trim()) { toast("Escribe el código"); break; }
-        state.code = v.trim(); setCode(state.code); state.editCode = false; state.scanError = ""; render(); break;
+        state.code = v.trim(); setCode(state.code); state.editCode = false; state.scanError = ""; state.sync = "off"; render(); syncNow(); break;
       case "edit-code": state.editCode = true; render(); break;
       case "manual": state.draft = { id: null, store: "", date: todayStr(), receiptTotal: null, items: [{ name: "", generic: "", qty: 1, amount: 0, category: "Otros" }], payment: "", source: "manual", returnTab: "resumen" }; render(); window.scrollTo(0, 0); break;
       case "add-item": state.draft.items.push({ name: "", generic: "", qty: 1, amount: 0, category: "Otros" }); render(); break;
@@ -463,7 +535,7 @@ textarea { min-height:140px; resize:vertical; font-size:13px; }
         if (!state.draft.confirmDel) { state.draft.confirmDel = true; render(); break; }
         var delId = state.draft.id;
         state.purchases = state.purchases.filter(function (p) { return p.id !== delId; });
-        persist(); state.draft = null; render(); toast("Compra borrada"); break;
+        persist(); pushDelete(delId); state.draft = null; render(); toast("Compra borrada"); break;
       case "open":
         var p = state.purchases.find(function (x) { return x.id === t.dataset.id; }); if (!p) break;
         state.draft = { id: p.id, store: p.store, date: p.date, payment: p.payment || "", receiptTotal: null, source: p.source || "manual", returnTab: "historial", items: p.items.map(function (i) { return { name: i.name, generic: i.generic || "", qty: i.qty, amount: i.amount, category: i.category }; }) };
@@ -473,7 +545,11 @@ textarea { min-height:140px; resize:vertical; font-size:13px; }
       case "restore": $("#restore").click(); break;
       case "wipe":
         if (!state.confirmWipe) { state.confirmWipe = true; render(); break; }
-        state.purchases = []; state.confirmWipe = false; persist(); render(); toast("Datos borrados"); break;
+        var doWipe = function () { state.purchases = []; state.confirmWipe = false; persist(); setPend({ s: [], d: [] }); render(); toast("Datos borrados"); };
+        if (state.code && state.sync !== "nostore") {
+          api("wipe").then(doWipe).catch(function (er) { if (er && er.code === "nostore") doWipe(); else toast("No se pudo borrar en el servidor. Intenta de nuevo."); });
+        } else doWipe();
+        break;
     }
   });
 
@@ -498,14 +574,16 @@ textarea { min-height:140px; resize:vertical; font-size:13px; }
         if (!Array.isArray(arr)) throw new Error("bad");
         var ok = arr.filter(function (p) { return p && p.id && isDate(p.date) && Array.isArray(p.items); });
         var ids = {}; state.purchases.forEach(function (p) { ids[p.id] = true; });
-        var added = 0; ok.forEach(function (p) { if (!ids[p.id]) { state.purchases.push(p); added++; } });
-        persist(); render(); toast(added + " compras restauradas");
+        var added = 0, pd = getPend(); ok.forEach(function (p) { if (!ids[p.id]) { state.purchases.push(p); pd.s.push(p.id); added++; } });
+        setPend(pd); persist(); render(); toast(added + " compras restauradas"); trySync();
       } catch (err) { toast("El archivo no es un respaldo válido"); }
     };
     rd.readAsText(f);
   });
 
   render();
+  if (state.code) syncNow();
+  document.addEventListener("visibilitychange", function () { if (document.visibilityState === "visible" && state.code) syncNow(); });
 })();
 </script>
 </body>
