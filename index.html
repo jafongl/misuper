@@ -167,7 +167,7 @@ textarea { min-height:140px; resize:vertical; font-size:13px; }
   function validPurchase(p) { return p && p.id && isDate(p.date) && Array.isArray(p.items); }
   function chunk(arr, n) { var out = []; for (var i = 0; i < arr.length; i += n) out.push(arr.slice(i, i + n)); return out; }
 
-  var state = { tab: "resumen", period: "mes", cat: null, prod: null, purchases: load(), draft: null, scan: null, scanError: "", confirmWipe: false, code: getCode(), editCode: false, sync: "off", syncing: false };
+  var state = { tab: "resumen", period: "mes", cat: null, prod: null, pay: null, purchases: load(), draft: null, scan: null, scanError: "", confirmWipe: false, code: getCode(), editCode: false, sync: "off", syncing: false };
 
   // ---------- Sincronización entre dispositivos (vía /api/data) ----------
   function api(op, payload) {
@@ -310,8 +310,14 @@ textarea { min-height:140px; resize:vertical; font-size:13px; }
     all.forEach(function (i) { byCat[i.category] = (byCat[i.category] || 0) + i.amount; });
     ps.forEach(function (p) { byStore[p.store] = (byStore[p.store] || 0) + purchaseTotal(p); });
     var byPay = {};
-    ps.forEach(function (p) { var k = p.payment || "Sin especificar"; byPay[k] = (byPay[k] || 0) + purchaseTotal(p); });
-    var pays = Object.keys(byPay).map(function (k) { return { name: k, sum: r2(byPay[k]) }; }).sort(function (a, b) { return b.sum - a.sum; });
+    ps.forEach(function (p) {
+      var k = p.payment || "Sin especificar", t = purchaseTotal(p);
+      if (!byPay[k]) byPay[k] = { sum: 0, buys: [] };
+      byPay[k].sum += t; byPay[k].buys.push({ id: p.id, date: p.date, store: p.store, count: p.items.length, sum: t });
+    });
+    var pays = Object.keys(byPay).map(function (k) {
+      return { name: k, sum: r2(byPay[k].sum), buys: byPay[k].buys.sort(function (a, b) { return b.date.localeCompare(a.date); }) };
+    }).sort(function (a, b) { return b.sum - a.sum; });
     var cats = Object.keys(byCat).map(function (c) { return { name: c, sum: r2(byCat[c]) }; }).sort(function (a, b) { return b.sum - a.sum; });
     var stores = Object.keys(byStore).map(function (s) { return { name: s, sum: r2(byStore[s]) }; }).sort(function (a, b) { return b.sum - a.sum; });
     var scoped = state.cat ? all.filter(function (i) { return i.category === state.cat; }) : all;
@@ -396,9 +402,15 @@ textarea { min-height:140px; resize:vertical; font-size:13px; }
     if (a.pays.length) {
       var maxY = Math.max.apply(null, a.pays.map(function (y) { return Math.max(y.sum, 0); }).concat([1]));
       html += '<div class="card"><h3>Por método de pago</h3>' + a.pays.map(function (y) {
-        return '<div class="prod"><div class="line"><span class="n">' + esc(y.name) + '</span><span class="v">' + money(y.sum) + '</span></div>' +
-          '<div class="bar"><i style="width:' + Math.max(0, y.sum) / maxY * 100 + '%;background:var(--accent)"></i></div></div>';
-      }).join("") + '</div>';
+        var open = state.pay === y.name;
+        var row = '<div class="prod"><button class="pbtn" data-act="pay" data-k="' + esc(y.name) + '" aria-pressed="' + open + '"><div class="line"><span class="n">' + esc(y.name) + '</span><span class="v">' + money(y.sum) + '</span></div>' +
+          '<div class="small">' + y.buys.length + (y.buys.length === 1 ? ' compra' : ' compras') + '</div>' +
+          '<div class="bar"><i style="width:' + Math.max(0, y.sum) / maxY * 100 + '%;background:var(--accent)"></i></div></button>';
+        if (open) row += '<div class="buys">' + y.buys.map(function (b) {
+          return '<button class="buy" data-act="open" data-rt="resumen" data-id="' + esc(b.id) + '"><span>' + fdate(b.date) + ' · ' + esc(b.store) + ' · ' + b.count + (b.count === 1 ? ' ítem' : ' ítems') + '</span><b>' + money(b.sum) + '</b></button>';
+        }).join("") + '</div>';
+        return row + '</div>';
+      }).join("") + '<p class="small" style="margin:10px 0 0">Toca un método de pago para ver sus compras.</p></div>';
     }
 
     if (a.stores.length) {
@@ -539,7 +551,8 @@ textarea { min-height:140px; resize:vertical; font-size:13px; }
     if (!act && t.dataset.tab) { state.tab = t.dataset.tab; state.draft = null; state.confirmWipe = false; state.scanError = ""; state.editCode = false; render(); window.scrollTo(0, 0); return; }
     switch (act) {
       case "tab": state.tab = t.dataset.tab; render(); window.scrollTo(0, 0); break;
-      case "period": state.period = t.dataset.p; state.prod = null; render(); break;
+      case "period": state.period = t.dataset.p; state.prod = null; state.pay = null; render(); break;
+      case "pay": state.pay = state.pay === t.dataset.k ? null : t.dataset.k; render(); break;
       case "cat": state.cat = state.cat === t.dataset.cat ? null : t.dataset.cat; state.prod = null; render(); break;
       case "prod": state.prod = state.prod === t.dataset.k ? null : t.dataset.k; render(); break;
       case "clear-cat": state.cat = null; state.prod = null; render(); break;
