@@ -258,7 +258,7 @@ textarea { min-height:140px; resize:vertical; font-size:13px; }
     var code = e && e.code;
     if (code === "code") return "El código de acceso es incorrecto. Vuelve a ingresarlo.";
     if (code === "config") return "Falta configurar GEMINI_API_KEY (o ANTHROPIC_API_KEY) y APP_CODE en Vercel.";
-    if (code === "busy") return "Se alcanzó el límite del servicio (en el plan gratis es por minuto y por día). Intenta más tarde o ingresa la compra manualmente.";
+    if (code === "busy") return "Se alcanzó el límite del servicio (en el plan gratis es por minuto y por día)." + (e.detail ? " Detalle: " + e.detail : "") + " Intenta más tarde o ingresa la compra manualmente.";
     if (code === "size") return "Las fotos pesan demasiado. Prueba con menos fotos o más cerca del recibo.";
     if (code === "parse") return "No logré leer el recibo. Prueba con una foto más nítida y completa.";
     if (code === "upstream") return "Error del servicio de lectura" + (e.detail ? ": " + e.detail : ".");
@@ -287,6 +287,8 @@ textarea { min-height:140px; resize:vertical; font-size:13px; }
       state.scan = null;
       if (e && e.name === "AbortError") { render(); return; }
       if (e && e.code === "code") { state.code = ""; setCode(""); }
+      var ed = ""; try { ed = e && e.detail ? e.detail : ""; } catch (er) {}
+      e.detail = ed;
       state.scanError = errCopy(e); render();
     });
   }
