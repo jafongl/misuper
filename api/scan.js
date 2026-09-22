@@ -91,7 +91,7 @@ module.exports = async (req, res) => {
     return res.status(502).json({ error: "upstream", detail: "sin conexión con la API" });
   }
   if (!out.ok) {
-    if (out.status === 429 || out.status === 529 || out.status === 503) return res.status(503).json({ error: "busy" });
+    if (out.status === 429 || out.status === 529 || out.status === 503) return res.status(503).json({ error: "busy", detail: out.detail });
     return res.status(502).json({ error: "upstream", detail: out.detail });
   }
   const parsed = extractJson(out.text);
