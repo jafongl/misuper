@@ -167,7 +167,7 @@ textarea { min-height:140px; resize:vertical; font-size:13px; }
   function validPurchase(p) { return p && p.id && isDate(p.date) && Array.isArray(p.items); }
   function chunk(arr, n) { var out = []; for (var i = 0; i < arr.length; i += n) out.push(arr.slice(i, i + n)); return out; }
 
-  var state = { tab: "resumen", period: "mes", cat: null, prod: null, pay: null, purchases: load(), draft: null, scan: null, scanError: "", confirmWipe: false, code: getCode(), editCode: false, sync: "off", syncing: false };
+  var state = { tab: "resumen", period: "mes", cat: null, prod: null, pay: null, purchases: load(), draft: null, scan: null, scanError: "", confirmWipe: false, code: getCode(), editCode: false, pasting: false, sync: "off", syncing: false };
 
   // ---------- Sincronización entre dispositivos (vía /api/data) ----------
   function api(op, payload) {
@@ -239,6 +239,7 @@ textarea { min-height:140px; resize:vertical; font-size:13px; }
     });
   }
 
+  var CLAUDE_PROMPT = 'Lee este recibo de supermercado (moneda: dólares/balboas) y responde SOLO con un JSON, sin texto adicional ni backticks, con esta forma: {"tienda":"nombre del comercio","fecha":"YYYY-MM-DD o cadena vacía si no se ve","total":número con el total pagado,"items":[{"nombre":"nombre legible del producto","producto":"nombre genérico corto para agrupar, ej. Leche, Arroz, Pollo","cantidad":número,"monto":número con el total final de esa línea (incluye su parte del impuesto si aplica, no lo separes),"categoria":"una de: ' + CATS.join(" | ") + '"}]}. Resta del monto los descuentos de cada línea. No incluyas subtotales, impuestos por separado, cambio, propinas ni puntos de fidelidad como ítems.';
   function fromScan(data) {
     var raw = Array.isArray(data) ? { items: data } : (data || {});
     var items = (Array.isArray(raw.items) ? raw.items : []).map(function (x) {
@@ -434,6 +435,7 @@ textarea { min-height:140px; resize:vertical; font-size:13px; }
     if (state.scan) {
       return html + '<div class="card center"><div class="spin" aria-hidden="true"></div><h2>Leyendo tu recibo…</h2><p class="sub">Puede tardar unos segundos.</p><button class="btn ghost" data-act="cancel-scan">Cancelar</button></div>';
     }
+    if (state.pasting) return html + viewPaste();
     html += '<div class="card"><h2>Agregar compra</h2><div class="stack">';
     if (!state.code || state.editCode) {
       html += '<label>Código de acceso<input id="codein" type="password" autocomplete="off" autocapitalize="off" placeholder="El APP_CODE que configuraste"></label>' +
@@ -444,10 +446,20 @@ textarea { min-height:140px; resize:vertical; font-size:13px; }
         '<button class="btn ghost" data-act="gal">🖼️ Elegir de la galería (hasta 3 fotos)</button>' +
         '<p class="small" style="margin:0">Pon el recibo sobre una superficie plana, con buena luz y completo en la foto. Si es muy largo, toma varias fotos y elígelas juntas desde la galería.</p>';
     }
-    html += '<button class="btn ghost" data-act="manual">✍️ Ingresar manualmente</button>';
+    html += '<button class="btn ghost" data-act="paste">📋 Pegar lo que leyó Claude</button>' +
+      '<button class="btn ghost" data-act="manual">✍️ Ingresar manualmente</button>';
     if (state.code && !state.editCode) html += '<button class="chip" data-act="edit-code" style="align-self:flex-start">Cambiar código</button>';
     html += '</div></div>';
     return html;
+  }
+
+  function viewPaste() {
+    return '<div class="card"><h2>Pegar lo que leyó Claude</h2>' +
+      '<p class="sub">1. Abre el chat de Claude y envíale la foto del recibo con este mensaje (tócalo para copiarlo):</p>' +
+      '<button class="hist" data-act="copy-prompt" style="margin-bottom:10px"><span class="small">' + esc(CLAUDE_PROMPT) + '</span></button>' +
+      '<p class="sub">2. Copia la respuesta de Claude (el JSON) y pégala aquí:</p>' +
+      '<textarea id="pj" placeholder=\'{"tienda":"...", "items":[...]}\'></textarea>' +
+      '<div class="row" style="margin-top:10px"><button class="btn ghost" data-act="paste-cancel">Cancelar</button><button class="btn" data-act="paste-go">Importar</button></div></div>';
   }
 
   function itemRow(it, i) {
@@ -550,7 +562,7 @@ textarea { min-height:140px; resize:vertical; font-size:13px; }
   document.addEventListener("click", function (e) {
     var t = e.target.closest("[data-act],[data-tab]"); if (!t) return;
     var act = t.dataset.act;
-    if (!act && t.dataset.tab) { state.tab = t.dataset.tab; state.draft = null; state.confirmWipe = false; state.scanError = ""; state.editCode = false; render(); window.scrollTo(0, 0); return; }
+    if (!act && t.dataset.tab) { state.tab = t.dataset.tab; state.draft = null; state.confirmWipe = false; state.scanError = ""; state.editCode = false; state.pasting = false; render(); window.scrollTo(0, 0); return; }
     switch (act) {
       case "tab": state.tab = t.dataset.tab; render(); window.scrollTo(0, 0); break;
       case "period": state.period = t.dataset.p; state.prod = null; state.pay = null; render(); break;
@@ -566,6 +578,20 @@ textarea { min-height:140px; resize:vertical; font-size:13px; }
         if (!v.trim()) { toast("Escribe el código"); break; }
         state.code = v.trim(); setCode(state.code); state.editCode = false; state.scanError = ""; state.sync = "off"; render(); syncNow(); break;
       case "edit-code": state.editCode = true; render(); break;
+      case "paste": state.pasting = true; render(); break;
+      case "paste-cancel": state.pasting = false; render(); break;
+      case "copy-prompt":
+        if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(CLAUDE_PROMPT).then(function () { toast("Copiado"); }).catch(function () { toast("No se pudo copiar; selecciona el texto a mano"); });
+        else toast("No se pudo copiar; selecciona el texto a mano");
+        break;
+      case "paste-go":
+        var txt = ($("#pj") || {}).value || "", a0 = txt.search(/[\{\[]/), a1 = Math.max(txt.lastIndexOf("}"), txt.lastIndexOf("]"));
+        try {
+          var dd = fromScan(JSON.parse(txt.slice(a0, a1 + 1)));
+          if (!dd.items.length) throw new Error("empty");
+          state.pasting = false; state.draft = dd; render(); window.scrollTo(0, 0);
+        } catch (er) { toast("No pude leer ese texto. Pega el JSON completo que te dio Claude."); }
+        break;
       case "manual": state.draft = { id: null, store: "", date: todayStr(), receiptTotal: null, items: [{ name: "", generic: "", qty: 1, amount: 0, category: "Otros" }], payment: "", source: "manual", returnTab: "resumen" }; render(); window.scrollTo(0, 0); break;
       case "add-item": state.draft.items.push({ name: "", generic: "", qty: 1, amount: 0, category: "Otros" }); render(); break;
       case "del-item": var row = t.closest(".item"); state.draft.items.splice(+row.dataset.i, 1); render(); break;
