@@ -9,10 +9,11 @@ const CATS = ["Frutas y verduras", "Carnes y pescados", "Lácteos y huevos", "Pa
 const PROMPT = `Eres un lector de recibos de supermercado de Panamá (moneda: dólares/balboas). Las imágenes adjuntas son UN mismo recibo (pueden ser varias partes de un recibo largo). Extrae todos los productos comprados.
 
 Responde SOLO con un JSON, sin texto adicional, con esta forma:
-{"tienda":"nombre del comercio","fecha":"YYYY-MM-DD o cadena vacía si no se ve","total":número con el total pagado según el recibo,"items":[{"nombre":"nombre legible del producto (expande abreviaturas cuando sea obvio)","producto":"nombre genérico corto para agrupar, ej. Leche, Arroz, Pollo, Papel higiénico","cantidad":número,"monto":número con el total final de esa línea,"categoria":"una de: ${CATS.join(" | ")}"}]}
+{"tienda":"nombre del comercio","fecha":"YYYY-MM-DD o cadena vacía si no se ve","total":número con el total pagado según el recibo,"items":[{"nombre":"nombre legible del producto (expande abreviaturas cuando sea obvio)","producto":"nombre genérico corto para agrupar, ej. Leche, Arroz, Pollo, Papel higiénico","cantidad":número,"unidad":"kg, lb, unidad, paquete, etc. según cómo se cobró la línea","monto":número con el total final de esa línea,"categoria":"una de: ${CATS.join(" | ")}"}]}
 
 Reglas:
 - "monto" es el total de la línea (cantidad × precio unitario), no el precio unitario. En productos por peso usa el monto cobrado.
+- "cantidad" es la cantidad en la unidad indicada en "unidad": el peso en kg/lb si se vendió por peso, o el número de unidades/paquetes si se vendió por pieza.
 - Si hay un descuento asociado a un producto (20% de descuento, 2x1, etc.), réstalo del monto de ese producto. Si es un descuento general que no se puede asociar, réstalo del ítem más grande.
 - Los impuestos van sumados al ítem que los causa: los ítems gravados con ITBMS (7%) llevan monto = (precio − descuento) × 1.07, redondeado a 2 decimales. Los ítems exentos no llevan impuesto. NO agregues una línea aparte de impuestos.
 - La suma de todos los montos debe ser igual al "total" del recibo. Si no cuadra por redondeo, ajusta la diferencia en el ítem gravado más grande.
