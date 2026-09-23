@@ -220,7 +220,7 @@ textarea { min-height:140px; resize:vertical; font-size:13px; }
         var merged = server.filter(function (p) { return pend.d.indexOf(p.id) < 0; }).concat(extra, keepLocal.filter(function (p) { return extra.indexOf(p) < 0; }));
         state.purchases = merged; persist(); state.sync = "ok";
       });
-    }).catch(handleSyncErr).then(function () { state.syncing = false; if (!state.draft && !state.scan) render(); });
+    }).catch(handleSyncErr).then(function () { state.syncing = false; tryOpenHash(); if (!state.draft && !state.scan) render(); });
   }
   function trySync() {
     if (!state.code || state.sync === "nostore") return Promise.resolve();
@@ -228,9 +228,27 @@ textarea { min-height:140px; resize:vertical; font-size:13px; }
   }
   function pushSave(id) { var p = getPend(); if (p.s.indexOf(id) < 0) p.s.push(id); p.d = p.d.filter(function (x) { return x !== id; }); setPend(p); return trySync(); }
   function pushDelete(id) { var p = getPend(); if (p.d.indexOf(id) < 0) p.d.push(id); p.s = p.s.filter(function (x) { return x !== id; }); setPend(p); return trySync(); }
+  function openPurchase(id, returnTab) {
+    var p = state.purchases.find(function (x) { return x.id === id; }); if (!p) return false;
+    state.draft = { id: p.id, store: p.store, date: p.date, payment: p.payment || "", receiptTotal: null, source: p.source || "manual", returnTab: returnTab || "historial", items: p.items.map(function (i) { return { name: i.name, generic: i.generic || "", unit: i.unit || "", qty: i.qty, amount: i.amount, category: i.category }; }) };
+    render(); window.scrollTo(0, 0); return true;
+  }
+  var pendingHash = (function () { var m = /(?:^|#)p=([A-Za-z0-9_-]+)/.exec(location.hash); return m ? m[1] : null; })();
+  function tryOpenHash() {
+    if (!pendingHash) return;
+    if (!state.code) return;
+    if (state.draft || state.scan || state.pasting) return;
+    if (openPurchase(pendingHash, "resumen")) {
+      pendingHash = null;
+      try { history.replaceState(null, "", location.pathname + location.search); } catch (e) {}
+    } else if (state.sync === "ok" || state.sync === "nostore" || state.sync === "error") {
+      toast("No encontré esa compra en este dispositivo");
+      pendingHash = null;
+    }
+  }
   function notifyUpdate(rec, isNew) {
     if (!state.code) return;
-    api("notify", { store: rec.store, date: rec.date, payment: rec.payment, count: rec.items.length, total: sumItems(rec.items), isNew: !!isNew }).catch(function () {});
+    api("notify", { id: rec.id, store: rec.store, date: rec.date, payment: rec.payment, count: rec.items.length, total: sumItems(rec.items), isNew: !!isNew }).catch(function () {});
   }
 
   // ---------- Lectura del recibo (vía /api/scan) ----------
@@ -672,10 +690,7 @@ textarea { min-height:140px; resize:vertical; font-size:13px; }
         var delId = state.draft.id;
         state.purchases = state.purchases.filter(function (p) { return p.id !== delId; });
         persist(); pushDelete(delId); state.draft = null; render(); toast("Compra borrada"); break;
-      case "open":
-        var p = state.purchases.find(function (x) { return x.id === t.dataset.id; }); if (!p) break;
-        state.draft = { id: p.id, store: p.store, date: p.date, payment: p.payment || "", receiptTotal: null, source: p.source || "manual", returnTab: t.dataset.rt || "historial", items: p.items.map(function (i) { return { name: i.name, generic: i.generic || "", unit: i.unit || "", qty: i.qty, amount: i.amount, category: i.category }; }) };
-        render(); window.scrollTo(0, 0); break;
+      case "open": openPurchase(t.dataset.id, t.dataset.rt || "historial"); break;
       case "csv": saveFile("gastos-supermercado.csv", toCSV(), "text/csv;charset=utf-8"); break;
       case "backup": saveFile("mi-super-respaldo.json", JSON.stringify(state.purchases), "application/json"); break;
       case "restore": $("#restore").click(); break;
