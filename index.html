@@ -85,6 +85,13 @@ textarea { min-height:140px; resize:vertical; font-size:13px; }
 .buys { margin:8px 0 2px; }
 .buy { display:flex; justify-content:space-between; gap:10px; width:100%; text-align:left; background:var(--bg); border:1px solid var(--line); border-radius:10px; padding:10px 12px; margin-bottom:6px; font-size:14px; }
 .buy b { font-variant-numeric:tabular-nums; white-space:nowrap; }
+.unitline { font-size:12px; color:var(--muted); margin-top:2px; }
+.pricebox { border:1px solid var(--line); border-radius:10px; padding:8px 10px; margin-bottom:6px; }
+.pricebox .up { display:flex; justify-content:space-between; gap:10px; font-size:14px; }
+.pricebox .up b { font-variant-numeric:tabular-nums; white-space:nowrap; }
+.pricebox.best b { color:var(--accent); }
+.pricebox.worst b { color:var(--danger); }
+.search { width:100%; }
 .item .r2 { display:grid; grid-template-columns:64px 92px 1fr 44px; gap:8px; margin-top:6px; }
 .item .r2 input, .item .r2 select { margin-top:0; }
 .item .gen { margin-top:6px; }
@@ -119,6 +126,7 @@ textarea { min-height:140px; resize:vertical; font-size:13px; }
   <button data-tab="resumen"><span>📊</span>Resumen</button>
   <button data-tab="escanear"><span>📷</span>Agregar</button>
   <button data-tab="historial"><span>🧾</span>Historial</button>
+  <button data-tab="precios"><span>🏷️</span>Precios</button>
 </nav>
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 <input type="file" id="cam" accept="image/*" capture="environment" hidden>
@@ -167,7 +175,7 @@ textarea { min-height:140px; resize:vertical; font-size:13px; }
   function validPurchase(p) { return p && p.id && isDate(p.date) && Array.isArray(p.items); }
   function chunk(arr, n) { var out = []; for (var i = 0; i < arr.length; i += n) out.push(arr.slice(i, i + n)); return out; }
 
-  var state = { tab: "resumen", period: "mes", cat: null, prod: null, pay: null, purchases: load(), draft: null, scan: null, scanError: "", confirmWipe: false, code: getCode(), editCode: false, pasting: false, sync: "off", syncing: false };
+  var state = { tab: "resumen", period: "mes", cat: null, prod: null, pay: null, priceQuery: "", pcmp: null, purchases: load(), draft: null, scan: null, scanError: "", confirmWipe: false, code: getCode(), editCode: false, pasting: false, sync: "off", syncing: false };
 
   // ---------- Sincronización entre dispositivos (vía /api/data) ----------
   function api(op, payload) {
@@ -239,13 +247,14 @@ textarea { min-height:140px; resize:vertical; font-size:13px; }
     });
   }
 
-  var CLAUDE_PROMPT = 'Lee este recibo de supermercado (moneda: dólares/balboas) y responde SOLO con un JSON, sin texto adicional ni backticks, con esta forma: {"tienda":"nombre del comercio","fecha":"YYYY-MM-DD o cadena vacía si no se ve","total":número con el total pagado,"items":[{"nombre":"nombre legible del producto","producto":"nombre genérico corto para agrupar, ej. Leche, Arroz, Pollo","cantidad":número,"monto":número con el total final de esa línea (incluye su parte del impuesto si aplica, no lo separes),"categoria":"una de: ' + CATS.join(" | ") + '"}]}. Resta del monto los descuentos de cada línea. No incluyas subtotales, impuestos por separado, cambio, propinas ni puntos de fidelidad como ítems.';
+  var CLAUDE_PROMPT = 'Lee este recibo de supermercado (moneda: dólares/balboas) y responde SOLO con un JSON, sin texto adicional ni backticks, con esta forma: {"tienda":"nombre del comercio","fecha":"YYYY-MM-DD o cadena vacía si no se ve","total":número con el total pagado,"items":[{"nombre":"nombre legible del producto","producto":"nombre genérico corto para agrupar, ej. Leche, Arroz, Pollo","cantidad":número,"unidad":"kg, lb, unidad, paquete, etc. según cómo se cobró la línea","monto":número con el total final de esa línea (incluye su parte del impuesto si aplica, no lo separes),"categoria":"una de: ' + CATS.join(" | ") + '"}]}. Resta del monto los descuentos de cada línea. No incluyas subtotales, impuestos por separado, cambio, propinas ni puntos de fidelidad como ítems.';
   function fromScan(data) {
     var raw = Array.isArray(data) ? { items: data } : (data || {});
     var items = (Array.isArray(raw.items) ? raw.items : []).map(function (x) {
       return {
         name: String(x.nombre != null ? x.nombre : (x.name || "")).trim(),
         generic: String(x.producto || "").trim(),
+        unit: String(x.unidad || "").trim(),
         qty: num(x.cantidad, 1),
         amount: r2(num(x.monto, 0)),
         category: CATS.indexOf(x.categoria) >= 0 ? x.categoria : "Otros"
@@ -307,7 +316,7 @@ textarea { min-height:140px; resize:vertical; font-size:13px; }
 
   function analyze() {
     var ps = state.purchases.filter(inPeriod), all = [];
-    ps.forEach(function (p) { p.items.forEach(function (it) { all.push({ pid: p.id, payment: p.payment, name: it.name, generic: it.generic, qty: it.qty, amount: Number(it.amount) || 0, category: it.category, store: p.store, date: p.date }); }); });
+    ps.forEach(function (p) { p.items.forEach(function (it) { all.push({ pid: p.id, payment: p.payment, name: it.name, generic: it.generic, unit: it.unit, qty: it.qty, amount: Number(it.amount) || 0, category: it.category, store: p.store, date: p.date }); }); });
     var total = r2(all.reduce(function (s, i) { return s + i.amount; }, 0));
     var byCat = {}, byStore = {};
     all.forEach(function (i) { byCat[i.category] = (byCat[i.category] || 0) + i.amount; });
@@ -330,13 +339,13 @@ textarea { min-height:140px; resize:vertical; font-size:13px; }
       if (!g[k]) g[k] = { key: k, name: label, labels: {}, sum: 0, times: 0, category: i.category, buys: {} };
       g[k].labels[label] = (g[k].labels[label] || 0) + 1;
       g[k].sum += i.amount; g[k].times += 1;
-      var b = g[k].buys[i.pid] || (g[k].buys[i.pid] = { id: i.pid, date: i.date, store: i.store, payment: i.payment, sum: 0 });
-      b.sum += i.amount;
+      var b = g[k].buys[i.pid] || (g[k].buys[i.pid] = { id: i.pid, date: i.date, store: i.store, payment: i.payment, sum: 0, qty: 0, unit: i.unit });
+      b.sum += i.amount; b.qty += i.qty;
     });
     var prods = Object.keys(g).map(function (k) {
       var x = g[k]; x.sum = r2(x.sum);
       x.name = Object.keys(x.labels).sort(function (a, b) { return a.length - b.length || x.labels[b] - x.labels[a]; })[0];
-      x.buys = Object.keys(x.buys).map(function (id) { var b = x.buys[id]; b.sum = r2(b.sum); return b; }).sort(function (a, b) { return b.date.localeCompare(a.date); });
+      x.buys = Object.keys(x.buys).map(function (id) { var b = x.buys[id]; b.sum = r2(b.sum); b.unitTxt = b.qty ? unitPriceText(b.qty, b.sum, b.unit) : ""; return b; }).sort(function (a, b) { return b.date.localeCompare(a.date); });
       return x;
     }).sort(function (a, b) { return b.sum - a.sum; }).slice(0, 12);
     return { ps: ps, total: total, cats: cats, stores: stores, pays: pays, prods: prods };
@@ -397,7 +406,7 @@ textarea { min-height:140px; resize:vertical; font-size:13px; }
         '<div class="small">' + p.times + (p.times === 1 ? ' vez' : ' veces') + ' · ' + esc(p.category) + '</div>' +
         '<div class="bar"><i style="width:' + Math.max(0, p.sum) / maxP * 100 + '%;background:' + catColor(p.category) + '"></i></div></button>';
       if (open) row += '<div class="buys">' + p.buys.map(function (b) {
-        return '<button class="buy" data-act="open" data-rt="resumen" data-id="' + esc(b.id) + '"><span>' + fdate(b.date) + ' · ' + esc(b.store) + (b.payment ? ' · ' + esc(b.payment) : '') + '</span><b>' + money(b.sum) + '</b></button>';
+        return '<button class="buy" data-act="open" data-rt="resumen" data-id="' + esc(b.id) + '"><span>' + fdate(b.date) + ' · ' + esc(b.store) + (b.payment ? ' · ' + esc(b.payment) : '') + (b.unitTxt ? ' · ' + esc(b.unitTxt) : '') + '</span><b>' + money(b.sum) + '</b></button>';
       }).join("") + '</div>';
       return row + '</div>';
     }).join("") + '<p class="small" style="margin:10px 0 0">Toca un producto para ver en qué compras aparece.</p></div>';
@@ -462,6 +471,11 @@ textarea { min-height:140px; resize:vertical; font-size:13px; }
       '<div class="row" style="margin-top:10px"><button class="btn ghost" data-act="paste-cancel">Cancelar</button><button class="btn" data-act="paste-go">Importar</button></div></div>';
   }
 
+  function unitPriceText(qty, amount, unit) {
+    var q = Number(qty) || 0;
+    if (!q) return "";
+    return money(amount / q) + " x " + (String(unit || "").trim() || "unidad");
+  }
   function itemRow(it, i) {
     return '<div class="item" data-i="' + i + '">' +
       '<input data-k="name" value="' + esc(it.name) + '" placeholder="Producto" aria-label="Producto">' +
@@ -470,7 +484,10 @@ textarea { min-height:140px; resize:vertical; font-size:13px; }
       '<input data-k="qty" type="number" inputmode="decimal" step="any" value="' + esc(it.qty) + '" aria-label="Cantidad" title="Cantidad">' +
       '<input data-k="amount" type="number" inputmode="decimal" step="0.01" value="' + esc(it.amount) + '" aria-label="Monto" title="Monto">' +
       '<select data-k="category" aria-label="Categoría">' + CATS.map(function (c) { return '<option' + (c === it.category ? ' selected' : '') + '>' + esc(c) + '</option>'; }).join("") + '</select>' +
-      '<button class="icon" data-act="del-item" aria-label="Quitar ítem">✕</button></div></div>';
+      '<button class="icon" data-act="del-item" aria-label="Quitar ítem">✕</button></div>' +
+      '<div class="r2" style="grid-template-columns:1fr 1fr">' +
+      '<input data-k="unit" value="' + esc(it.unit || "") + '" placeholder="Unidad (kg, unidad, lb…)" aria-label="Unidad">' +
+      '<div class="unitline" data-up>' + esc(unitPriceText(it.qty, it.amount, it.unit)) + '</div></div></div>';
   }
 
   function viewDraft() {
@@ -519,12 +536,59 @@ textarea { min-height:140px; resize:vertical; font-size:13px; }
     return html;
   }
 
+  function allStats() {
+    var g = {};
+    state.purchases.forEach(function (p) {
+      p.items.forEach(function (it) {
+        var label = (it.generic || it.name || "Sin nombre").trim(), k = pkey(label);
+        var qty = Number(it.qty) || 0, amount = Number(it.amount) || 0;
+        if (!qty) return;
+        if (!g[k]) g[k] = { key: k, labels: {}, occ: [] };
+        g[k].labels[label] = (g[k].labels[label] || 0) + 1;
+        g[k].occ.push({ date: p.date, store: p.store, payment: p.payment, qty: qty, unit: it.unit || "", amount: r2(amount), price: r2(amount / qty) });
+      });
+    });
+    return Object.keys(g).map(function (k) {
+      var x = g[k];
+      x.name = Object.keys(x.labels).sort(function (a, b) { return a.length - b.length || x.labels[b] - x.labels[a]; })[0];
+      x.occ.sort(function (a, b) { return b.date.localeCompare(a.date); });
+      x.min = Math.min.apply(null, x.occ.map(function (o) { return o.price; }));
+      x.max = Math.max.apply(null, x.occ.map(function (o) { return o.price; }));
+      x.count = x.occ.length;
+      return x;
+    }).sort(function (a, b) { return b.count - a.count || a.name.localeCompare(b.name); });
+  }
+
+  function viewPrecios() {
+    if (!state.purchases.length) {
+      return '<div class="card empty"><div class="big">🏷️</div><h2>Aún no hay precios que comparar</h2><p class="sub">Cuando agregues compras, aquí verás el precio unitario de cada producto a lo largo del tiempo.</p></div>';
+    }
+    var q = norm(state.priceQuery);
+    var stats = allStats().filter(function (x) { return !q || norm(x.name).indexOf(q) >= 0; });
+    var html = '<div class="card"><h2>Comparar precios</h2><p class="sub">Precio por unidad (o por kg/lb) de cada producto, compra por compra.</p>' +
+      '<input class="search" id="pq" value="' + esc(state.priceQuery) + '" placeholder="Buscar producto…" aria-label="Buscar producto"></div>';
+    if (!stats.length) return html + '<div class="card"><p class="sub" style="margin:0">No encontré productos con ese nombre.</p></div>';
+    html += '<div class="card">' + stats.map(function (x) {
+      var open = state.pcmp === x.key;
+      var row = '<button class="pbtn" data-act="pcmp" data-k="' + esc(x.key) + '" aria-pressed="' + open + '"><div class="prod"><div class="line"><span class="n">' + esc(x.name) + '</span><span class="v">' + x.count + (x.count === 1 ? " compra" : " compras") + '</span></div>' +
+        (x.count > 1 ? '<div class="small">Desde ' + money(x.min) + ' hasta ' + money(x.max) + '</div>' : '') + '</div></button>';
+      if (open) row += '<div class="buys">' + x.occ.map(function (o) {
+        var cls = x.count > 1 ? (o.price === x.min ? " best" : (o.price === x.max ? " worst" : "")) : "";
+        return '<div class="pricebox' + cls + '"><div class="up"><span>' + fdate(o.date) + ' · ' + esc(o.store) + '</span><b>' + money(o.price) + ' x ' + esc(o.unit || "unidad") + '</b></div>' +
+          '<div class="small">' + o.qty + ' ' + esc(o.unit || "unidad") + (o.qty !== 1 ? "s" : "") + ' · total ' + money(o.amount) + (o.payment ? ' · ' + esc(o.payment) : '') + '</div></div>';
+      }).join("") + '</div>';
+      return row;
+    }).join("") + '</div>';
+    return html;
+  }
+
   function render() {
     document.querySelectorAll(".nav button").forEach(function (b) { b.setAttribute("aria-current", b.dataset.tab === state.tab ? "page" : "false"); });
     var html;
     if (state.draft) html = viewDraft();
     else if (state.tab === "escanear") html = viewEscanear();
     else if (state.tab === "historial") html = viewHistorial();
+    else if (state.tab === "precios") html = viewPrecios();
     else html = viewResumen();
     $("#main").innerHTML = html;
     if (state.draft) updateTotals();
@@ -547,7 +611,7 @@ textarea { min-height:140px; resize:vertical; font-size:13px; }
   function saveDraft() {
     var d = state.draft;
     var items = d.items.filter(function (it) { return String(it.name).trim() || Number(it.amount); }).map(function (it) {
-      return { name: String(it.name).trim() || "Sin nombre", generic: String(it.generic || "").trim(), qty: Number(it.qty) || 1, amount: r2(Number(it.amount) || 0), category: CATS.indexOf(it.category) >= 0 ? it.category : "Otros" };
+      return { name: String(it.name).trim() || "Sin nombre", generic: String(it.generic || "").trim(), unit: String(it.unit || "").trim(), qty: Number(it.qty) || 1, amount: r2(Number(it.amount) || 0), category: CATS.indexOf(it.category) >= 0 ? it.category : "Otros" };
     });
     if (!items.length) { toast("Agrega al menos un ítem"); return; }
     if (!d.id && !d.payment) { toast("Elige el método de pago"); return; }
@@ -562,11 +626,12 @@ textarea { min-height:140px; resize:vertical; font-size:13px; }
   document.addEventListener("click", function (e) {
     var t = e.target.closest("[data-act],[data-tab]"); if (!t) return;
     var act = t.dataset.act;
-    if (!act && t.dataset.tab) { state.tab = t.dataset.tab; state.draft = null; state.confirmWipe = false; state.scanError = ""; state.editCode = false; state.pasting = false; render(); window.scrollTo(0, 0); return; }
+    if (!act && t.dataset.tab) { state.tab = t.dataset.tab; state.draft = null; state.confirmWipe = false; state.scanError = ""; state.editCode = false; state.pasting = false; state.pcmp = null; render(); window.scrollTo(0, 0); return; }
     switch (act) {
       case "tab": state.tab = t.dataset.tab; render(); window.scrollTo(0, 0); break;
       case "period": state.period = t.dataset.p; state.prod = null; state.pay = null; render(); break;
       case "pay": state.pay = state.pay === t.dataset.k ? null : t.dataset.k; render(); break;
+      case "pcmp": state.pcmp = state.pcmp === t.dataset.k ? null : t.dataset.k; render(); break;
       case "cat": state.cat = state.cat === t.dataset.cat ? null : t.dataset.cat; state.prod = null; render(); break;
       case "prod": state.prod = state.prod === t.dataset.k ? null : t.dataset.k; render(); break;
       case "clear-cat": state.cat = null; state.prod = null; render(); break;
@@ -592,8 +657,8 @@ textarea { min-height:140px; resize:vertical; font-size:13px; }
           state.pasting = false; state.draft = dd; render(); window.scrollTo(0, 0);
         } catch (er) { toast("No pude leer ese texto. Pega el JSON completo que te dio Claude."); }
         break;
-      case "manual": state.draft = { id: null, store: "", date: todayStr(), receiptTotal: null, items: [{ name: "", generic: "", qty: 1, amount: 0, category: "Otros" }], payment: "", source: "manual", returnTab: "resumen" }; render(); window.scrollTo(0, 0); break;
-      case "add-item": state.draft.items.push({ name: "", generic: "", qty: 1, amount: 0, category: "Otros" }); render(); break;
+      case "manual": state.draft = { id: null, store: "", date: todayStr(), receiptTotal: null, items: [{ name: "", generic: "", unit: "", qty: 1, amount: 0, category: "Otros" }], payment: "", source: "manual", returnTab: "resumen" }; render(); window.scrollTo(0, 0); break;
+      case "add-item": state.draft.items.push({ name: "", generic: "", unit: "", qty: 1, amount: 0, category: "Otros" }); render(); break;
       case "del-item": var row = t.closest(".item"); state.draft.items.splice(+row.dataset.i, 1); render(); break;
       case "cancel": state.draft = null; render(); break;
       case "save": saveDraft(); break;
@@ -604,7 +669,7 @@ textarea { min-height:140px; resize:vertical; font-size:13px; }
         persist(); pushDelete(delId); state.draft = null; render(); toast("Compra borrada"); break;
       case "open":
         var p = state.purchases.find(function (x) { return x.id === t.dataset.id; }); if (!p) break;
-        state.draft = { id: p.id, store: p.store, date: p.date, payment: p.payment || "", receiptTotal: null, source: p.source || "manual", returnTab: t.dataset.rt || "historial", items: p.items.map(function (i) { return { name: i.name, generic: i.generic || "", qty: i.qty, amount: i.amount, category: i.category }; }) };
+        state.draft = { id: p.id, store: p.store, date: p.date, payment: p.payment || "", receiptTotal: null, source: p.source || "manual", returnTab: t.dataset.rt || "historial", items: p.items.map(function (i) { return { name: i.name, generic: i.generic || "", unit: i.unit || "", qty: i.qty, amount: i.amount, category: i.category }; }) };
         render(); window.scrollTo(0, 0); break;
       case "csv": saveFile("gastos-supermercado.csv", toCSV(), "text/csv;charset=utf-8"); break;
       case "backup": saveFile("mi-super-respaldo.json", JSON.stringify(state.purchases), "application/json"); break;
@@ -620,13 +685,16 @@ textarea { min-height:140px; resize:vertical; font-size:13px; }
   });
 
   document.addEventListener("input", function (e) {
-    var t = e.target, d = state.draft; if (!d || !$("#main").contains(t)) return;
+    var t = e.target;
+    if (t.id === "pq") { state.priceQuery = t.value; render(); var el = $("#pq"); if (el) { el.focus(); el.selectionStart = el.selectionEnd = el.value.length; } return; }
+    var d = state.draft; if (!d || !$("#main").contains(t)) return;
     if (t.dataset.f) { d[t.dataset.f] = t.value; return; }
     var row = t.closest(".item"), k = t.dataset.k; if (!row || !k) return;
     var it = d.items[+row.dataset.i], v = t.value;
     if (k === "qty" || k === "amount") v = num(v, 0);
     it[k] = v;
     if (k === "amount") updateTotals();
+    if (k === "qty" || k === "amount" || k === "unit") { var up = row.querySelector("[data-up]"); if (up) up.textContent = unitPriceText(it.qty, it.amount, it.unit); }
   });
 
   $("#cam").addEventListener("change", function (e) { startScan(e.target.files); e.target.value = ""; });
