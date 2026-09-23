@@ -40,6 +40,7 @@ function clean(p) {
     items: p.items.map((i) => ({
       name: String((i && i.name) || "").slice(0, 200),
       generic: String((i && i.generic) || "").slice(0, 120),
+      unit: String((i && i.unit) || "").slice(0, 40),
       qty: Number(i && i.qty) || 1,
       amount: Number(i && i.amount) || 0,
       category: String((i && i.category) || "Otros").slice(0, 40)
@@ -47,11 +48,46 @@ function clean(p) {
   };
 }
 
+function money(n) {
+  n = Number(n) || 0;
+  return "$" + Math.abs(n).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+async function sendTelegram(text) {
+  const token = process.env.TELEGRAM_BOT_TOKEN, chat = process.env.TELEGRAM_CHAT_ID;
+  if (!token || !chat) return false;
+  const r = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ chat_id: chat, text, disable_web_page_preview: true })
+  });
+  return r.ok;
+}
+
 module.exports = async (req, res) => {
   if (req.method !== "POST") return res.status(405).json({ error: "method" });
   if (!process.env.APP_CODE) return res.status(500).json({ error: "config" });
   const { op, code } = req.body || {};
   if (!same(code || "", process.env.APP_CODE)) return res.status(401).json({ error: "code" });
+
+  if (op === "notify") {
+    const b = req.body || {};
+    const store = String(b.store || "Sin tienda").slice(0, 120);
+    const date = /^\d{4}-\d{2}-\d{2}$/.test(String(b.date)) ? b.date : "";
+    const payment = String(b.payment || "").slice(0, 40);
+    const count = Math.max(0, Number(b.count) || 0);
+    const total = money(b.total);
+    const kind = b.isNew ? "Nueva compra" : "Compra actualizada";
+    const lines = [`🛒 ${kind}`, `${store}${date ? " · " + date : ""}`, `${count} ${count === 1 ? "ítem" : "ítems"} · Total: ${total}`];
+    if (payment) lines.push(payment);
+    try {
+      const sent = await sendTelegram(lines.join("\n"));
+      return res.status(200).json({ sent });
+    } catch (e) {
+      return res.status(200).json({ sent: false });
+    }
+  }
+
   const cfg = storeCfg();
   if (!cfg) return res.status(501).json({ error: "nostore" });
 

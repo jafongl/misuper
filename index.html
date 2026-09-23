@@ -228,6 +228,10 @@ textarea { min-height:140px; resize:vertical; font-size:13px; }
   }
   function pushSave(id) { var p = getPend(); if (p.s.indexOf(id) < 0) p.s.push(id); p.d = p.d.filter(function (x) { return x !== id; }); setPend(p); return trySync(); }
   function pushDelete(id) { var p = getPend(); if (p.d.indexOf(id) < 0) p.d.push(id); p.s = p.s.filter(function (x) { return x !== id; }); setPend(p); return trySync(); }
+  function notifyUpdate(rec, isNew) {
+    if (!state.code) return;
+    api("notify", { store: rec.store, date: rec.date, payment: rec.payment, count: rec.items.length, total: sumItems(rec.items), isNew: !!isNew }).catch(function () {});
+  }
 
   // ---------- Lectura del recibo (vía /api/scan) ----------
   function compress(file) {
@@ -615,10 +619,11 @@ textarea { min-height:140px; resize:vertical; font-size:13px; }
     });
     if (!items.length) { toast("Agrega al menos un ítem"); return; }
     if (!d.id && !d.payment) { toast("Elige el método de pago"); return; }
+    var isNew = !d.id;
     var rec = { id: d.id || uid(), store: String(d.store).trim() || "Sin tienda", date: isDate(d.date) ? d.date : todayStr(), payment: d.payment || "", items: items, source: d.source };
     var idx = state.purchases.findIndex(function (p) { return p.id === rec.id; });
     if (idx >= 0) state.purchases[idx] = rec; else state.purchases.push(rec);
-    persist(); pushSave(rec.id);
+    persist(); pushSave(rec.id); notifyUpdate(rec, isNew);
     state.tab = d.returnTab || "resumen"; state.draft = null;
     render(); window.scrollTo(0, 0); toast("Compra guardada");
   }
