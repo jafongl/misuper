@@ -80,6 +80,9 @@ module.exports = async (req, res) => {
     const kind = b.isNew ? "Nueva compra" : "Compra actualizada";
     const lines = [`🛒 ${kind}`, `${store}${date ? " · " + date : ""}`, `${count} ${count === 1 ? "ítem" : "ítems"} · Total: ${total}`];
     if (payment) lines.push(payment);
+    const id = String(b.id || "");
+    const host = req.headers && req.headers.host;
+    if (/^[A-Za-z0-9_-]{1,64}$/.test(id) && host) lines.push(`Ver detalle: https://${host}/#p=${id}`);
     try {
       const sent = await sendTelegram(lines.join("\n"));
       return res.status(200).json({ sent });
