@@ -86,7 +86,7 @@ textarea { min-height:140px; resize:vertical; font-size:13px; }
 .buy { display:flex; justify-content:space-between; gap:10px; width:100%; text-align:left; background:var(--bg); border:1px solid var(--line); border-radius:10px; padding:10px 12px; margin-bottom:6px; font-size:14px; }
 .buy b { font-variant-numeric:tabular-nums; white-space:nowrap; }
 .unitline { font-size:12px; color:var(--muted); margin-top:2px; }
-.pricebox { border:1px solid var(--line); border-radius:10px; padding:8px 10px; margin-bottom:6px; }
+.pricebox { display:block; width:100%; text-align:left; background:var(--bg); border:1px solid var(--line); border-radius:10px; padding:8px 10px; margin-bottom:6px; -webkit-appearance:none; appearance:none; }
 .pricebox .up { display:flex; justify-content:space-between; gap:10px; font-size:14px; }
 .pricebox .up b { font-variant-numeric:tabular-nums; white-space:nowrap; }
 .pricebox.best b { color:var(--accent); }
@@ -590,7 +590,7 @@ textarea { min-height:140px; resize:vertical; font-size:13px; }
         if (!g[k]) g[k] = { key: k, labels: {}, occ: [] };
         g[k].labels[label] = (g[k].labels[label] || 0) + 1;
         var price = r2(amount / qty);
-        g[k].occ.push({ date: p.date, store: p.store, payment: p.payment, qty: qty, unit: it.unit || "", amount: r2(amount), price: price, name: (it.name || it.generic || "").trim(), perKgTxt: perKgText(price, it.sizeQty, it.sizeUnit, it.unit) });
+        g[k].occ.push({ pid: p.id, date: p.date, store: p.store, payment: p.payment, qty: qty, unit: it.unit || "", amount: r2(amount), price: price, name: (it.name || it.generic || "").trim(), perKgTxt: perKgText(price, it.sizeQty, it.sizeUnit, it.unit) });
       });
     });
     return Object.keys(g).map(function (k) {
@@ -619,8 +619,8 @@ textarea { min-height:140px; resize:vertical; font-size:13px; }
         (x.count > 1 ? '<div class="small">Desde ' + money(x.min) + ' hasta ' + money(x.max) + '</div>' : '') + '</div></button>';
       if (open) row += '<div class="buys">' + x.occ.map(function (o) {
         var cls = x.count > 1 ? (o.price === x.min ? " best" : (o.price === x.max ? " worst" : "")) : "";
-        return '<div class="pricebox' + cls + '"><div class="up"><span>' + esc(o.name || x.name) + ' · ' + fdateShort(o.date) + ' · ' + esc(o.store) + '</span><b>' + money(o.price) + ' x ' + esc(o.unit || "unidad") + (o.perKgTxt ? ' <span class="small">(' + esc(o.perKgTxt) + ')</span>' : '') + '</b></div>' +
-          '<div class="small">' + o.qty + ' ' + esc(o.unit || "unidad") + (o.qty !== 1 ? "s" : "") + ' · total ' + money(o.amount) + (o.payment ? ' · ' + esc(o.payment) : '') + '</div></div>';
+        return '<button class="pricebox' + cls + '" data-act="open" data-rt="precios" data-id="' + esc(o.pid) + '"><div class="up"><span>' + esc(o.name || x.name) + ' · ' + fdateShort(o.date) + ' · ' + esc(o.store) + '</span><b>' + money(o.price) + ' x ' + esc(o.unit || "unidad") + (o.perKgTxt ? ' <span class="small">(' + esc(o.perKgTxt) + ')</span>' : '') + '</b></div>' +
+          '<div class="small">' + o.qty + ' ' + esc(o.unit || "unidad") + (o.qty !== 1 ? "s" : "") + ' · total ' + money(o.amount) + (o.payment ? ' · ' + esc(o.payment) : '') + '</div></button>';
       }).join("") + '</div>';
       return row;
     }).join("") + '</div>';
