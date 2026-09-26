@@ -41,6 +41,8 @@ function clean(p) {
       name: String((i && i.name) || "").slice(0, 200),
       generic: String((i && i.generic) || "").slice(0, 120),
       unit: String((i && i.unit) || "").slice(0, 40),
+      sizeQty: Number(i && i.sizeQty) > 0 ? Number(i.sizeQty) : "",
+      sizeUnit: String((i && i.sizeUnit) || "").slice(0, 10),
       qty: Number(i && i.qty) || 1,
       amount: Number(i && i.amount) || 0,
       category: String((i && i.category) || "Otros").slice(0, 40)
