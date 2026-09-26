@@ -365,13 +365,15 @@ textarea { min-height:140px; resize:vertical; font-size:13px; }
       if (!g[k]) g[k] = { key: k, name: label, labels: {}, sum: 0, times: 0, category: i.category, buys: {} };
       g[k].labels[label] = (g[k].labels[label] || 0) + 1;
       g[k].sum += i.amount; g[k].times += 1;
-      var b = g[k].buys[i.pid] || (g[k].buys[i.pid] = { id: i.pid, date: i.date, store: i.store, payment: i.payment, sum: 0, qty: 0, unit: i.unit });
+      var b = g[k].buys[i.pid] || (g[k].buys[i.pid] = { id: i.pid, date: i.date, store: i.store, payment: i.payment, sum: 0, qty: 0, unit: i.unit, names: {} });
       b.sum += i.amount; b.qty += i.qty;
+      var itemName = (i.name || i.generic || "Sin nombre").trim();
+      b.names[itemName] = (b.names[itemName] || 0) + 1;
     });
     var prods = Object.keys(g).map(function (k) {
       var x = g[k]; x.sum = r2(x.sum);
       x.name = Object.keys(x.labels).sort(function (a, b) { return a.length - b.length || x.labels[b] - x.labels[a]; })[0];
-      x.buys = Object.keys(x.buys).map(function (id) { var b = x.buys[id]; b.sum = r2(b.sum); b.unitTxt = b.qty ? unitPriceText(b.qty, b.sum, b.unit) : ""; return b; }).sort(function (a, b) { return b.date.localeCompare(a.date); });
+      x.buys = Object.keys(x.buys).map(function (id) { var b = x.buys[id]; b.sum = r2(b.sum); b.unitTxt = b.qty ? unitPriceText(b.qty, b.sum, b.unit) : ""; b.nameTxt = Object.keys(b.names).join(", "); return b; }).sort(function (a, b) { return b.date.localeCompare(a.date); });
       return x;
     }).sort(function (a, b) { return b.sum - a.sum; }).slice(0, 12);
     return { ps: ps, total: total, cats: cats, stores: stores, pays: pays, prods: prods };
@@ -432,7 +434,7 @@ textarea { min-height:140px; resize:vertical; font-size:13px; }
         '<div class="small">' + p.times + (p.times === 1 ? ' vez' : ' veces') + ' · ' + esc(p.category) + '</div>' +
         '<div class="bar"><i style="width:' + Math.max(0, p.sum) / maxP * 100 + '%;background:' + catColor(p.category) + '"></i></div></button>';
       if (open) row += '<div class="buys">' + p.buys.map(function (b) {
-        return '<button class="buy" data-act="open" data-rt="resumen" data-id="' + esc(b.id) + '"><span>' + esc(p.name) + ' · ' + fdateShort(b.date) + ' · ' + esc(b.store) + (b.payment ? ' · ' + esc(b.payment) : '') + (b.unitTxt ? ' · ' + esc(b.unitTxt) : '') + '</span><b>' + money(b.sum) + '</b></button>';
+        return '<button class="buy" data-act="open" data-rt="resumen" data-id="' + esc(b.id) + '"><span>' + esc(b.nameTxt || p.name) + ' · ' + fdateShort(b.date) + ' · ' + esc(b.store) + (b.payment ? ' · ' + esc(b.payment) : '') + (b.unitTxt ? ' · ' + esc(b.unitTxt) : '') + '</span><b>' + money(b.sum) + '</b></button>';
       }).join("") + '</div>';
       return row + '</div>';
     }).join("") + '<p class="small" style="margin:10px 0 0">Toca un producto para ver en qué compras aparece.</p></div>';
@@ -571,7 +573,7 @@ textarea { min-height:140px; resize:vertical; font-size:13px; }
         if (!qty) return;
         if (!g[k]) g[k] = { key: k, labels: {}, occ: [] };
         g[k].labels[label] = (g[k].labels[label] || 0) + 1;
-        g[k].occ.push({ date: p.date, store: p.store, payment: p.payment, qty: qty, unit: it.unit || "", amount: r2(amount), price: r2(amount / qty) });
+        g[k].occ.push({ date: p.date, store: p.store, payment: p.payment, qty: qty, unit: it.unit || "", amount: r2(amount), price: r2(amount / qty), name: (it.name || it.generic || "").trim() });
       });
     });
     return Object.keys(g).map(function (k) {
@@ -600,7 +602,7 @@ textarea { min-height:140px; resize:vertical; font-size:13px; }
         (x.count > 1 ? '<div class="small">Desde ' + money(x.min) + ' hasta ' + money(x.max) + '</div>' : '') + '</div></button>';
       if (open) row += '<div class="buys">' + x.occ.map(function (o) {
         var cls = x.count > 1 ? (o.price === x.min ? " best" : (o.price === x.max ? " worst" : "")) : "";
-        return '<div class="pricebox' + cls + '"><div class="up"><span>' + esc(x.name) + ' · ' + fdateShort(o.date) + ' · ' + esc(o.store) + '</span><b>' + money(o.price) + ' x ' + esc(o.unit || "unidad") + '</b></div>' +
+        return '<div class="pricebox' + cls + '"><div class="up"><span>' + esc(o.name || x.name) + ' · ' + fdateShort(o.date) + ' · ' + esc(o.store) + '</span><b>' + money(o.price) + ' x ' + esc(o.unit || "unidad") + '</b></div>' +
           '<div class="small">' + o.qty + ' ' + esc(o.unit || "unidad") + (o.qty !== 1 ? "s" : "") + ' · total ' + money(o.amount) + (o.payment ? ' · ' + esc(o.payment) : '') + '</div></div>';
       }).join("") + '</div>';
       return row;
