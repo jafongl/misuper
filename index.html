@@ -234,7 +234,7 @@ textarea { min-height:140px; resize:vertical; font-size:13px; }
   function pushDelete(id) { var p = getPend(); if (p.d.indexOf(id) < 0) p.d.push(id); p.s = p.s.filter(function (x) { return x !== id; }); setPend(p); return trySync(); }
   function openPurchase(id, returnTab) {
     var p = state.purchases.find(function (x) { return x.id === id; }); if (!p) return false;
-    state.draft = { id: p.id, store: p.store, date: p.date, payment: p.payment || "", receiptTotal: null, source: p.source || "manual", returnTab: returnTab || "historial", items: p.items.map(function (i) { return { name: i.name, generic: i.generic || "", unit: i.unit || "", qty: i.qty, amount: i.amount, category: i.category }; }) };
+    state.draft = { id: p.id, store: p.store, date: p.date, payment: p.payment || "", receiptTotal: null, source: p.source || "manual", returnTab: returnTab || "historial", items: p.items.map(function (i) { return { name: i.name, generic: i.generic || "", unit: i.unit || "", sizeQty: i.sizeQty || "", sizeUnit: i.sizeUnit || "", qty: i.qty, amount: i.amount, category: i.category }; }) };
     render(); window.scrollTo(0, 0); return true;
   }
   var pendingHash = (function () { var m = /(?:^|#)p=([A-Za-z0-9_-]+)/.exec(location.hash); return m ? m[1] : null; })();
@@ -499,10 +499,24 @@ textarea { min-height:140px; resize:vertical; font-size:13px; }
       '<div class="row" style="margin-top:10px"><button class="btn ghost" data-act="paste-cancel">Cancelar</button><button class="btn" data-act="paste-go">Importar</button></div></div>';
   }
 
-  function unitPriceText(qty, amount, unit) {
+  var SIZE_UNITS = ["g", "kg", "ml", "L", "lb", "oz"];
+  var SIZE_FACTORS = { g: { kind: "kg", f: 1 / 1000 }, kg: { kind: "kg", f: 1 }, lb: { kind: "kg", f: 0.45359237 }, oz: { kind: "kg", f: 0.028349523125 }, ml: { kind: "L", f: 1 / 1000 }, L: { kind: "L", f: 1 } };
+  function isWeightOrVolumeUnit(u) {
+    return /^(kg|kilo|kilos|kilogramo|kilogramos|g|gr|grs|gramo|gramos|lb|lbs|libra|libras|oz|onza|onzas|l|lt|litro|litros|ml|mililitro|mililitros)$/.test(norm(u));
+  }
+  function perKgText(pricePerItem, sizeQty, sizeUnit, basisUnit) {
+    if (isWeightOrVolumeUnit(basisUnit)) return "";
+    var q = Number(sizeQty), def = SIZE_FACTORS[sizeUnit];
+    if (!q || q <= 0 || !def) return "";
+    return money(pricePerItem / (q * def.f)) + "/" + def.kind;
+  }
+  function unitPriceText(qty, amount, unit, sizeQty, sizeUnit) {
     var q = Number(qty) || 0;
     if (!q) return "";
-    return money(amount / q) + " x " + (String(unit || "").trim() || "unidad");
+    var per = amount / q;
+    var txt = money(per) + " x " + (String(unit || "").trim() || "unidad");
+    var extra = perKgText(per, sizeQty, sizeUnit, unit);
+    return extra ? txt + " · " + extra : txt;
   }
   function itemRow(it, i) {
     return '<div class="item" data-i="' + i + '">' +
@@ -513,9 +527,11 @@ textarea { min-height:140px; resize:vertical; font-size:13px; }
       '<input data-k="amount" type="number" inputmode="decimal" step="0.01" value="' + esc(it.amount) + '" aria-label="Monto" title="Monto">' +
       '<select data-k="category" aria-label="Categoría">' + CATS.map(function (c) { return '<option' + (c === it.category ? ' selected' : '') + '>' + esc(c) + '</option>'; }).join("") + '</select>' +
       '<button class="icon" data-act="del-item" aria-label="Quitar ítem">✕</button></div>' +
-      '<div class="r2" style="grid-template-columns:1fr 1fr">' +
+      '<div class="r2" style="grid-template-columns:1fr 70px 64px">' +
       '<input data-k="unit" value="' + esc(it.unit || "") + '" placeholder="Unidad (kg, unidad, lb…)" aria-label="Unidad">' +
-      '<div class="unitline" data-up>' + esc(unitPriceText(it.qty, it.amount, it.unit)) + '</div></div></div>';
+      '<input data-k="sizeQty" type="number" inputmode="decimal" step="any" value="' + esc(it.sizeQty || "") + '" placeholder="Tamaño" aria-label="Tamaño del empaque (opcional)" title="Tamaño del empaque, ej. 450">' +
+      '<select data-k="sizeUnit" aria-label="Unidad del tamaño" title="Unidad del tamaño"><option value=""></option>' + SIZE_UNITS.map(function (u) { return '<option' + (u === it.sizeUnit ? ' selected' : '') + '>' + u + '</option>'; }).join("") + '</select></div>' +
+      '<div class="unitline" data-up>' + esc(unitPriceText(it.qty, it.amount, it.unit, it.sizeQty, it.sizeUnit)) + '</div></div>';
   }
 
   function viewDraft() {
@@ -573,7 +589,8 @@ textarea { min-height:140px; resize:vertical; font-size:13px; }
         if (!qty) return;
         if (!g[k]) g[k] = { key: k, labels: {}, occ: [] };
         g[k].labels[label] = (g[k].labels[label] || 0) + 1;
-        g[k].occ.push({ date: p.date, store: p.store, payment: p.payment, qty: qty, unit: it.unit || "", amount: r2(amount), price: r2(amount / qty), name: (it.name || it.generic || "").trim() });
+        var price = r2(amount / qty);
+        g[k].occ.push({ date: p.date, store: p.store, payment: p.payment, qty: qty, unit: it.unit || "", amount: r2(amount), price: price, name: (it.name || it.generic || "").trim(), perKgTxt: perKgText(price, it.sizeQty, it.sizeUnit, it.unit) });
       });
     });
     return Object.keys(g).map(function (k) {
@@ -602,7 +619,7 @@ textarea { min-height:140px; resize:vertical; font-size:13px; }
         (x.count > 1 ? '<div class="small">Desde ' + money(x.min) + ' hasta ' + money(x.max) + '</div>' : '') + '</div></button>';
       if (open) row += '<div class="buys">' + x.occ.map(function (o) {
         var cls = x.count > 1 ? (o.price === x.min ? " best" : (o.price === x.max ? " worst" : "")) : "";
-        return '<div class="pricebox' + cls + '"><div class="up"><span>' + esc(o.name || x.name) + ' · ' + fdateShort(o.date) + ' · ' + esc(o.store) + '</span><b>' + money(o.price) + ' x ' + esc(o.unit || "unidad") + '</b></div>' +
+        return '<div class="pricebox' + cls + '"><div class="up"><span>' + esc(o.name || x.name) + ' · ' + fdateShort(o.date) + ' · ' + esc(o.store) + '</span><b>' + money(o.price) + ' x ' + esc(o.unit || "unidad") + (o.perKgTxt ? ' <span class="small">(' + esc(o.perKgTxt) + ')</span>' : '') + '</b></div>' +
           '<div class="small">' + o.qty + ' ' + esc(o.unit || "unidad") + (o.qty !== 1 ? "s" : "") + ' · total ' + money(o.amount) + (o.payment ? ' · ' + esc(o.payment) : '') + '</div></div>';
       }).join("") + '</div>';
       return row;
@@ -639,7 +656,7 @@ textarea { min-height:140px; resize:vertical; font-size:13px; }
   function saveDraft() {
     var d = state.draft;
     var items = d.items.filter(function (it) { return String(it.name).trim() || Number(it.amount); }).map(function (it) {
-      return { name: String(it.name).trim() || "Sin nombre", generic: String(it.generic || "").trim(), unit: String(it.unit || "").trim(), qty: Number(it.qty) || 1, amount: r2(Number(it.amount) || 0), category: CATS.indexOf(it.category) >= 0 ? it.category : "Otros" };
+      var sq = Number(it.sizeQty); return { name: String(it.name).trim() || "Sin nombre", generic: String(it.generic || "").trim(), unit: String(it.unit || "").trim(), sizeQty: sq > 0 ? sq : "", sizeUnit: SIZE_UNITS.indexOf(it.sizeUnit) >= 0 ? it.sizeUnit : "", qty: Number(it.qty) || 1, amount: r2(Number(it.amount) || 0), category: CATS.indexOf(it.category) >= 0 ? it.category : "Otros" };
     });
     if (!items.length) { toast("Agrega al menos un ítem"); return; }
     if (!d.id && !d.payment) { toast("Elige el método de pago"); return; }
@@ -686,8 +703,8 @@ textarea { min-height:140px; resize:vertical; font-size:13px; }
           state.pasting = false; state.draft = dd; render(); window.scrollTo(0, 0);
         } catch (er) { toast("No pude leer ese texto. Pega el JSON completo que te dio Claude."); }
         break;
-      case "manual": state.draft = { id: null, store: "", date: todayStr(), receiptTotal: null, items: [{ name: "", generic: "", unit: "", qty: 1, amount: 0, category: "Otros" }], payment: "", source: "manual", returnTab: "resumen" }; render(); window.scrollTo(0, 0); break;
-      case "add-item": state.draft.items.push({ name: "", generic: "", unit: "", qty: 1, amount: 0, category: "Otros" }); render(); break;
+      case "manual": state.draft = { id: null, store: "", date: todayStr(), receiptTotal: null, items: [{ name: "", generic: "", unit: "", sizeQty: "", sizeUnit: "", qty: 1, amount: 0, category: "Otros" }], payment: "", source: "manual", returnTab: "resumen" }; render(); window.scrollTo(0, 0); break;
+      case "add-item": state.draft.items.push({ name: "", generic: "", unit: "", sizeQty: "", sizeUnit: "", qty: 1, amount: 0, category: "Otros" }); render(); break;
       case "del-item": var row = t.closest(".item"); state.draft.items.splice(+row.dataset.i, 1); render(); break;
       case "cancel": state.draft = null; render(); break;
       case "save": saveDraft(); break;
@@ -720,7 +737,7 @@ textarea { min-height:140px; resize:vertical; font-size:13px; }
     if (k === "qty" || k === "amount") v = num(v, 0);
     it[k] = v;
     if (k === "amount") updateTotals();
-    if (k === "qty" || k === "amount" || k === "unit") { var up = row.querySelector("[data-up]"); if (up) up.textContent = unitPriceText(it.qty, it.amount, it.unit); }
+    if (k === "qty" || k === "amount" || k === "unit" || k === "sizeQty" || k === "sizeUnit") { var up = row.querySelector("[data-up]"); if (up) up.textContent = unitPriceText(it.qty, it.amount, it.unit, it.sizeQty, it.sizeUnit); }
   });
 
   $("#cam").addEventListener("change", function (e) { startScan(e.target.files); e.target.value = ""; });
