@@ -39,7 +39,7 @@ function providerName() {
 }
 
 async function callGemini(images) {
-  const model = process.env.GEMINI_MODEL || "gemini-flash-latest";
+  const model = process.env.GEMINI_MODEL || "gemini-3.5-flash-lite";
   const parts = images.map((i) => ({ inline_data: { mime_type: i.mime, data: i.data } }));
   parts.push({ text: PROMPT });
   const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`, {
