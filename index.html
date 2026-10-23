@@ -164,6 +164,48 @@ textarea { min-height:140px; resize:vertical; font-size:13px; }
   }
   function pkey(label) { return norm(label).split(/\s+/).map(stem).join(" "); }
   function catColor(c) { var i = CATS.indexOf(c); return COLORS[i < 0 ? CATS.length - 1 : i]; }
+  function fdateDM(s) { var d = new Date(s + "T00:00:00"); return isNaN(d) ? s : d.toLocaleDateString("es", { day: "numeric", month: "short" }); }
+
+  function corteRange(ref) {
+    var d = ref || new Date(), y = d.getFullYear(), m = d.getMonth(), day = d.getDate();
+    if (day < 15) { m -= 1; if (m < 0) { m = 11; y -= 1; } }
+    var start = new Date(y, m, 15), end = new Date(y, m + 1, 14);
+    function f(dt) { return dt.getFullYear() + "-" + String(dt.getMonth() + 1).padStart(2, "0") + "-" + String(dt.getDate()).padStart(2, "0"); }
+    return { start: f(start), end: f(end) };
+  }
+
+  var VALE_KEY = "misuper:vale";
+  function loadVale() {
+    try { var v = JSON.parse(localStorage.getItem(VALE_KEY)); return (v && v.anchorDate) ? v : null; } catch (e) { return null; }
+  }
+  function persistVale(v) { try { localStorage.setItem(VALE_KEY, JSON.stringify(v)); } catch (e) {} }
+  function cleanVale(v) {
+    v = v || {};
+    var ab = Number(v.anchorBalance), ra = Number(v.rechargeAmount), rd = parseInt(v.rechargeDay, 10);
+    if (!isDate(v.anchorDate) || isNaN(ab)) return null;
+    return { anchorDate: v.anchorDate, anchorBalance: r2(ab), rechargeAmount: ra > 0 ? r2(ra) : 0, rechargeDay: (rd >= 1 && rd <= 28) ? rd : 18 };
+  }
+  function countRecharges(fromExclusive, toInclusive, day) {
+    var from = new Date(fromExclusive + "T00:00:00"), to = new Date(toInclusive + "T00:00:00");
+    var d = new Date(from.getFullYear(), from.getMonth(), day);
+    if (d <= from) d = new Date(d.getFullYear(), d.getMonth() + 1, day);
+    var n = 0;
+    while (d <= to) { n++; d = new Date(d.getFullYear(), d.getMonth() + 1, day); }
+    return n;
+  }
+  function valeBalanceAsOf(dateStr) {
+    var v = state.vale; if (!v) return null;
+    var recharged = countRecharges(v.anchorDate, dateStr, v.rechargeDay) * v.rechargeAmount;
+    var spent = 0;
+    state.purchases.forEach(function (p) { if (p.payment === "VALE" && p.date > v.anchorDate && p.date <= dateStr) spent += purchaseTotal(p); });
+    return r2(v.anchorBalance + recharged - spent);
+  }
+  function nextRechargeDate(dateStr) {
+    var v = state.vale; if (!v) return null;
+    var d = new Date(dateStr + "T00:00:00"), r = new Date(d.getFullYear(), d.getMonth(), v.rechargeDay);
+    if (r <= d) r = new Date(r.getFullYear(), r.getMonth() + 1, v.rechargeDay);
+    return r.getFullYear() + "-" + String(r.getMonth() + 1).padStart(2, "0") + "-" + String(r.getDate()).padStart(2, "0");
+  }
 
   function load() { try { var r = localStorage.getItem(KEY); var a = r ? JSON.parse(r) : []; return Array.isArray(a) ? a : []; } catch (e) { return []; } }
   function getCode() { try { return localStorage.getItem(CODE_KEY) || ""; } catch (e) { return ""; } }
@@ -180,7 +222,7 @@ textarea { min-height:140px; resize:vertical; font-size:13px; }
   function validPurchase(p) { return p && p.id && isDate(p.date) && Array.isArray(p.items); }
   function chunk(arr, n) { var out = []; for (var i = 0; i < arr.length; i += n) out.push(arr.slice(i, i + n)); return out; }
 
-  var state = { tab: "resumen", period: "mes", cat: null, prod: null, pay: null, priceQuery: "", pcmp: null, purchases: load(), draft: null, scan: null, scanError: "", confirmWipe: false, code: getCode(), editCode: false, pasting: false, sync: "off", syncing: false };
+  var state = { tab: "resumen", period: "mes", cat: null, prod: null, pay: null, priceQuery: "", pcmp: null, purchases: load(), draft: null, scan: null, scanError: "", confirmWipe: false, code: getCode(), editCode: false, pasting: false, sync: "off", syncing: false, vale: loadVale(), valeEdit: false, valeSynced: false };
 
   // ---------- Sincronización entre dispositivos (vía /api/data) ----------
   function api(op, payload) {
@@ -225,11 +267,25 @@ textarea { min-height:140px; resize:vertical; font-size:13px; }
         var merged = server.filter(function (p) { return pend.d.indexOf(p.id) < 0; }).concat(extra, keepLocal.filter(function (p) { return extra.indexOf(p) < 0; }));
         state.purchases = merged; persist(); state.sync = "ok";
       });
+    }).then(function () {
+      return api("get_settings").then(function (res) {
+        var srv = cleanVale(res && res.settings);
+        if (srv) { state.vale = srv; persistVale(srv); }
+        else if (state.vale && !state.valeSynced) { return api("set_settings", { settings: state.vale }).catch(function () {}); }
+      }).catch(function () {}).then(function () { state.valeSynced = true; });
     }).catch(handleSyncErr).then(function () { state.syncing = false; tryOpenHash(); if (!state.draft && !state.scan) render(); });
   }
   function trySync() {
     if (!state.code || state.sync === "nostore") return Promise.resolve();
     return flush().then(function () { state.sync = "ok"; }).catch(handleSyncErr).then(function () { if (!state.draft && !state.scan) render(); });
+  }
+  function saveVale(v) {
+    var clean = cleanVale(v);
+    if (!clean) { toast("Revisa el saldo y la fecha"); return false; }
+    state.vale = clean; state.valeEdit = false; state.valeSynced = true;
+    persistVale(clean);
+    if (state.code) api("set_settings", { settings: clean }).catch(function () {});
+    return true;
   }
   function pushSave(id) { var p = getPend(); if (p.s.indexOf(id) < 0) p.s.push(id); p.d = p.d.filter(function (x) { return x !== id; }); setPend(p); return trySync(); }
   function pushDelete(id) { var p = getPend(); if (p.d.indexOf(id) < 0) p.d.push(id); p.s = p.s.filter(function (x) { return x !== id; }); setPend(p); return trySync(); }
@@ -339,6 +395,7 @@ textarea { min-height:140px; resize:vertical; font-size:13px; }
   // ---------- Análisis ----------
   function inPeriod(p) {
     if (state.period === "todo") return true;
+    if (state.period === "corte") { var c = corteRange(new Date()); return p.date >= c.start && p.date <= c.end; }
     var d = new Date(p.date + "T00:00:00"), now = new Date();
     if (state.period === "mes") return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth();
     var days = state.period === "30" ? 30 : 90;
@@ -403,12 +460,30 @@ textarea { min-height:140px; resize:vertical; font-size:13px; }
       '<label>Código de acceso<input id="codein" type="password" autocomplete="off" autocapitalize="off" placeholder="El APP_CODE que configuraste"></label>' +
       '<button class="btn" data-act="save-code" style="width:100%;margin-top:10px">Guardar código</button></div>';
   }
-  function viewResumen() { return (state.code ? "" : codeCard()) + viewResumenBody(); }
+  function valeCard() {
+    if (state.valeEdit || !state.vale) {
+      var v = state.vale || { anchorDate: todayStr(), anchorBalance: "", rechargeAmount: "", rechargeDay: 18 };
+      return '<div class="card"><h2>Saldo VALE</h2>' +
+        '<div class="row"><label>Saldo actual<input id="v_bal" type="number" inputmode="decimal" step="0.01" value="' + esc(v.anchorBalance) + '" placeholder="128.54"></label>' +
+        '<label>A partir de<input id="v_date" type="date" value="' + esc(v.anchorDate) + '"></label></div>' +
+        '<div class="row" style="margin-top:10px"><label>Recarga mensual<input id="v_amt" type="number" inputmode="decimal" step="0.01" value="' + esc(v.rechargeAmount) + '" placeholder="142.50"></label>' +
+        '<label>Día de recarga<input id="v_day" type="number" inputmode="numeric" min="1" max="28" value="' + esc(v.rechargeDay) + '"></label></div>' +
+        '<p class="small" style="margin:8px 0 0">El saldo se resta solo al guardar una compra pagada con VALE, y se recarga cada mes en el día indicado.</p>' +
+        '<div class="row" style="margin-top:10px">' + (state.vale ? '<button class="btn ghost" data-act="vale-cancel">Cancelar</button>' : '') + '<button class="btn" data-act="vale-save">Guardar</button></div></div>';
+    }
+    var bal = valeBalanceAsOf(todayStr());
+    return '<div class="card"><h2>Saldo VALE</h2><div class="kpis" style="grid-template-columns:1fr 1fr">' +
+      '<div class="kpi"><b>' + money(bal) + '</b><span>Disponible hoy</span></div>' +
+      '<div class="kpi"><b>' + fdateDM(nextRechargeDate(todayStr())) + '</b><span>Próxima recarga (+' + money(state.vale.rechargeAmount) + ')</span></div></div>' +
+      '<button class="chip" data-act="vale-edit" style="margin-top:10px">Editar</button></div>';
+  }
+  function viewResumen() { return (state.code ? "" : codeCard()) + valeCard() + viewResumenBody(); }
   function viewResumenBody() {
     if (!state.purchases.length) {
       return '<div class="card empty"><div class="big">🧾</div><h2>Aún no hay compras</h2><p class="sub">Toma una foto de tu recibo y verás en qué gastas más.</p><button class="btn" data-act="tab" data-tab="escanear">Agregar mi primera compra</button></div>';
     }
-    var periods = [["mes","Este mes"],["30","30 días"],["90","3 meses"],["todo","Todo"]];
+    var corte = corteRange(new Date());
+    var periods = [["corte", fdateDM(corte.start) + " – " + fdateDM(corte.end)], ["mes","Este mes"],["30","30 días"],["90","3 meses"],["todo","Todo"]];
     var html = '<div class="chips" role="group" aria-label="Período">' + periods.map(function (p) {
       return '<button class="chip" data-act="period" data-p="' + p[0] + '" aria-pressed="' + (state.period === p[0]) + '">' + p[1] + '</button>';
     }).join("") + '</div>';
@@ -451,7 +526,7 @@ textarea { min-height:140px; resize:vertical; font-size:13px; }
       html += '<div class="card"><h3>Por método de pago</h3>' + a.pays.map(function (y) {
         var open = state.pay === y.name;
         var row = '<div class="prod"><button class="pbtn" data-act="pay" data-k="' + esc(y.name) + '" aria-pressed="' + open + '"><div class="line"><span class="n">' + esc(y.name) + '</span><span class="v">' + money(y.sum) + '</span></div>' +
-          '<div class="small">' + y.buys.length + (y.buys.length === 1 ? ' compra' : ' compras') + '</div>' +
+          '<div class="small">' + y.buys.length + (y.buys.length === 1 ? ' compra' : ' compras') + (y.name === "VALE" && state.vale ? ' · saldo: ' + money(valeBalanceAsOf(todayStr())) : '') + '</div>' +
           '<div class="bar"><i style="width:' + Math.max(0, y.sum) / maxY * 100 + '%;background:var(--accent)"></i></div></button>';
         if (open) row += '<div class="buys">' + y.buys.map(function (b) {
           return '<button class="buy" data-act="open" data-rt="resumen" data-id="' + esc(b.id) + '"><span>' + fdate(b.date) + ' · ' + esc(b.store) + ' · ' + b.count + (b.count === 1 ? ' ítem' : ' ítems') + '</span><b>' + money(b.sum) + '</b></button>';
@@ -678,7 +753,8 @@ textarea { min-height:140px; resize:vertical; font-size:13px; }
     if (idx >= 0) state.purchases[idx] = rec; else state.purchases.push(rec);
     persist(); pushSave(rec.id); notifyUpdate(rec, isNew);
     state.tab = d.returnTab || "resumen"; state.draft = null;
-    render(); window.scrollTo(0, 0); toast("Compra guardada");
+    render(); window.scrollTo(0, 0);
+    toast("Compra guardada" + (rec.payment === "VALE" && state.vale ? " · Saldo VALE: " + money(valeBalanceAsOf(todayStr())) : ""));
   }
 
   document.addEventListener("click", function (e) {
@@ -701,6 +777,11 @@ textarea { min-height:140px; resize:vertical; font-size:13px; }
         if (!v.trim()) { toast("Escribe el código"); break; }
         state.code = v.trim(); setCode(state.code); state.editCode = false; state.scanError = ""; state.sync = "off"; render(); syncNow(); break;
       case "edit-code": state.editCode = true; render(); break;
+      case "vale-edit": state.valeEdit = true; render(); break;
+      case "vale-cancel": state.valeEdit = false; render(); break;
+      case "vale-save":
+        if (saveVale({ anchorDate: ($("#v_date") || {}).value, anchorBalance: ($("#v_bal") || {}).value, rechargeAmount: ($("#v_amt") || {}).value, rechargeDay: ($("#v_day") || {}).value })) render();
+        break;
       case "paste": state.pasting = true; render(); break;
       case "paste-cancel": state.pasting = false; render(); break;
       case "copy-prompt":
