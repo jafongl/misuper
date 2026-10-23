@@ -2,6 +2,14 @@
 // Variables (las crea Vercel al conectar la base): UPSTASH_REDIS_REST_URL/TOKEN o KV_REST_API_URL/TOKEN.
 const crypto = require("crypto");
 const KEY = "misuper:purchases";
+const SETTINGS_KEY = "misuper:vale";
+
+function cleanVale(v) {
+  if (!v || typeof v !== "object") return null;
+  const ab = Number(v.anchorBalance), ra = Number(v.rechargeAmount), rd = parseInt(v.rechargeDay, 10);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(String(v.anchorDate)) || isNaN(ab)) return null;
+  return { anchorDate: v.anchorDate, anchorBalance: ab, rechargeAmount: ra > 0 ? ra : 0, rechargeDay: rd >= 1 && rd <= 28 ? rd : 18 };
+}
 
 function same(a, b) {
   const ha = crypto.createHash("sha256").update(String(a)).digest();
@@ -120,6 +128,18 @@ module.exports = async (req, res) => {
     }
     if (op === "wipe") {
       await redis(cfg, ["DEL", KEY]);
+      return res.status(200).json({ ok: true });
+    }
+    if (op === "get_settings") {
+      const raw = await redis(cfg, ["GET", SETTINGS_KEY]);
+      let settings = null;
+      try { settings = raw ? cleanVale(JSON.parse(raw)) : null; } catch (e) { settings = null; }
+      return res.status(200).json({ settings });
+    }
+    if (op === "set_settings") {
+      const settings = cleanVale(req.body.settings);
+      if (!settings) return res.status(400).json({ error: "settings" });
+      await redis(cfg, ["SET", SETTINGS_KEY, JSON.stringify(settings)]);
       return res.status(200).json({ ok: true });
     }
     return res.status(400).json({ error: "op" });
