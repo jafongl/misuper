@@ -82,6 +82,9 @@ input:focus, select:focus, textarea:focus, button:focus-visible { outline:2px so
 .item:first-child { border-top:0; }
 textarea { min-height:140px; resize:vertical; font-size:13px; }
 .pbtn { display:block; width:100%; text-align:left; background:none; border:0; padding:0; }
+.ico { display:inline-block; width:1.7em; text-align:center; margin-right:4px; font-size:18px; }
+.cathead { display:flex; align-items:center; gap:8px; margin:0 0 6px; }
+.cathead b { font-size:15px; }
 .pbtn[aria-pressed="true"] .n { color:var(--accent); font-weight:700; }
 .buys { margin:8px 0 2px; }
 .buy { display:flex; justify-content:space-between; gap:10px; width:100%; text-align:left; background:var(--bg); border:1px solid var(--line); border-radius:10px; padding:10px 12px; margin-bottom:6px; font-size:14px; }
@@ -197,7 +200,7 @@ textarea { min-height:140px; resize:vertical; font-size:13px; }
     var v = state.vale; if (!v) return null;
     var recharged = countRecharges(v.anchorDate, dateStr, v.rechargeDay) * v.rechargeAmount;
     var spent = 0;
-    state.purchases.forEach(function (p) { if (p.payment === "VALE" && p.date > v.anchorDate && p.date <= dateStr) spent += purchaseTotal(p); });
+    state.purchases.forEach(function (p) { if (p.payment === "VALE" && p.date >= v.anchorDate && p.date <= dateStr) spent += purchaseTotal(p); });
     return r2(v.anchorBalance + recharged - spent);
   }
   function nextRechargeDate(dateStr) {
@@ -667,6 +670,24 @@ textarea { min-height:140px; resize:vertical; font-size:13px; }
     return html;
   }
 
+  var CAT_EMOJI = { "Frutas y verduras": "🥦", "Carnes y pescados": "🥩", "Lácteos y huevos": "🥛", "Panadería": "🍞", "Despensa": "🥫", "Bebidas": "🥤", "Snacks y dulces": "🍫", "Congelados": "🧊", "Limpieza del hogar": "🧼", "Cuidado personal": "🧴", "Mascotas": "🐾", "Otros": "🛒" };
+  var ITEM_EMOJI = [
+    [/papel higienico|papel toalla|servilleta/, "🧻"], [/crema dental|pasta dental|colgate|cepillo/, "🪥"], [/pringles|doritos|cheetos|papas fritas|papitas|snack|tostitos|nachos/, "🍿"],
+    [/helado/, "🍦"], [/chocolate|cacao/, "🍫"], [/galleta|oreo/, "🍪"], [/caramelo|dulce|gomita|chicle/, "🍬"], [/pizza/, "🍕"], [/hamburguesa/, "🍔"],
+    [/manzana/, "🍎"], [/banano|guineo|platano|banana/, "🍌"], [/naranja|mandarina/, "🍊"], [/limon|lima/, "🍋"], [/fresa/, "🍓"], [/uva/, "🍇"], [/sandia/, "🍉"], [/melon/, "🍈"], [/pina/, "🍍"], [/mango/, "🥭"], [/pera/, "🍐"], [/durazno|melocoton/, "🍑"], [/cereza/, "🍒"], [/kiwi/, "🥝"], [/coco/, "🥥"], [/aguacate/, "🥑"],
+    [/tomate/, "🍅"], [/cebolla/, "🧅"], [/ajo/, "🧄"], [/zanahoria/, "🥕"], [/papa|patata/, "🥔"], [/pepino/, "🥒"], [/lechuga|repollo|espinaca|acelga|culantro|cilantro|perejil/, "🥬"], [/pimenton|aji|chile/, "🫑"], [/berenjena/, "🍆"], [/maiz|elote/, "🌽"], [/brocoli|coliflor/, "🥦"], [/hongo|champin/, "🍄"], [/yuca|name|otoe|ñame/, "🍠"],
+    [/pollo|pechuga|muslo|alita/, "🍗"], [/tocino|bacon|jamon|salchicha|chorizo/, "🥓"], [/carne|res\b|bistec|molida|costilla|cerdo|chuleta/, "🥩"], [/camaron|langostino/, "🦐"], [/pescado|atun|salmon|tilapia|corvina|sardina/, "🐟"],
+    [/huevo/, "🥚"], [/leche/, "🥛"], [/queso/, "🧀"], [/yogurt|yogur/, "🥣"], [/mantequilla|margarina/, "🧈"], [/crema/, "🥛"],
+    [/pan\b|pan de|baguette|tostada|bollo|tortilla/, "🍞"], [/croissant/, "🥐"], [/arroz/, "🍚"], [/pasta|espagueti|spaghetti|macarron|fideo/, "🍝"], [/frijol|lenteja|garbanzo|poroto/, "🫘"], [/aceite|oliva/, "🫒"], [/\bsal\b/, "🧂"], [/azucar|splenda/, "🍬"], [/harina/, "🌾"], [/cafe/, "☕"], [/\bte\b|manzanilla/, "🍵"], [/sopa|caldo/, "🍲"], [/atun|enlatado|lata/, "🥫"],
+    [/agua/, "💧"], [/jugo|nectar/, "🧃"], [/cerveza/, "🍺"], [/vino/, "🍷"], [/ron|whisky|vodka|licor/, "🥃"], [/refresco|gaseosa|soda|coca|pepsi|sprite/, "🥤"],
+    [/jabon|detergente|suavizante|cloro|desinfectante|limpiador|lavaplatos/, "🧼"], [/shampoo|champu|acondicionador|crema corporal|locion|desodorante|protector/, "🧴"], [/pañal|panal|toallita|toalla sanitaria/, "👶"], [/bolsa|basura/, "🗑️"],
+    [/perro|gato|croqueta|mascota/, "🐾"]
+  ];
+  function itemEmoji(name, generic, category) {
+    var t = norm((name || "") + " " + (generic || ""));
+    for (var i = 0; i < ITEM_EMOJI.length; i++) if (ITEM_EMOJI[i][0].test(t)) return ITEM_EMOJI[i][1];
+    return CAT_EMOJI[category] || "🛒";
+  }
   function allStats() {
     var g = {};
     state.purchases.forEach(function (p) {
@@ -674,7 +695,9 @@ textarea { min-height:140px; resize:vertical; font-size:13px; }
         var label = (it.generic || it.name || "Sin nombre").trim(), k = pkey(label);
         var qty = Number(it.qty) || 0, amount = Number(it.amount) || 0;
         if (!qty) return;
-        if (!g[k]) g[k] = { key: k, labels: {}, occ: [] };
+        if (!g[k]) g[k] = { key: k, labels: {}, cats: {}, specifics: {}, occ: [] };
+        var cat = CATS.indexOf(it.category) >= 0 ? it.category : "Otros"; g[k].cats[cat] = (g[k].cats[cat] || 0) + 1;
+        var spec = (it.name || "").trim(); if (spec) g[k].specifics[spec] = 1;
         g[k].labels[label] = (g[k].labels[label] || 0) + 1;
         var price = r2(amount / qty);
         g[k].occ.push({ pid: p.id, idx: idx, date: p.date, store: p.store, payment: p.payment, qty: qty, unit: it.unit || "", amount: r2(amount), price: price, name: (it.name || it.generic || "").trim(), perKgTxt: perKgText(price, it.sizeQty, it.sizeUnit, it.unit) });
@@ -687,8 +710,10 @@ textarea { min-height:140px; resize:vertical; font-size:13px; }
       x.min = Math.min.apply(null, x.occ.map(function (o) { return o.price; }));
       x.max = Math.max.apply(null, x.occ.map(function (o) { return o.price; }));
       x.count = x.occ.length;
+      x.category = Object.keys(x.cats).sort(function (a, b) { return x.cats[b] - x.cats[a]; })[0] || "Otros";
+      x.icon = itemEmoji(x.name + " " + Object.keys(x.specifics).join(" "), "", x.category);
       return x;
-    }).sort(function (a, b) { return b.count - a.count || a.name.localeCompare(b.name); });
+    });
   }
 
   function viewPrecios() {
@@ -700,17 +725,23 @@ textarea { min-height:140px; resize:vertical; font-size:13px; }
     var html = '<div class="card"><h2>Comparar precios</h2><p class="sub">Precio por unidad (o por kg/lb) de cada producto, compra por compra.</p>' +
       '<input class="search" id="pq" value="' + esc(state.priceQuery) + '" placeholder="Buscar producto…" aria-label="Buscar producto"></div>';
     if (!stats.length) return html + '<div class="card"><p class="sub" style="margin:0">No encontré productos con ese nombre.</p></div>';
-    html += '<div class="card">' + stats.map(function (x) {
-      var open = state.pcmp === x.key;
-      var row = '<button class="pbtn" data-act="pcmp" data-k="' + esc(x.key) + '" aria-pressed="' + open + '"><div class="prod"><div class="line"><span class="n">' + esc(x.name) + '</span><span class="v">' + x.count + (x.count === 1 ? " compra" : " compras") + '</span></div>' +
-        (x.count > 1 ? '<div class="small">Desde ' + money(x.min) + ' hasta ' + money(x.max) + '</div>' : '') + '</div></button>';
-      if (open) row += '<div class="buys">' + x.occ.map(function (o) {
-        var cls = x.count > 1 ? (o.price === x.min ? " best" : (o.price === x.max ? " worst" : "")) : "";
-        return '<button class="pricebox' + cls + '" data-act="open" data-rt="precios" data-id="' + esc(o.pid) + '" data-idx="' + o.idx + '"><div class="up"><span>' + esc(o.name || x.name) + ' · ' + fdateShort(o.date) + ' · ' + esc(o.store) + '</span><b>' + money(o.price) + ' x ' + esc(o.unit || "unidad") + (o.perKgTxt ? ' <span class="small">(' + esc(o.perKgTxt) + ')</span>' : '') + '</b></div>' +
-          '<div class="small">' + o.qty + ' ' + esc(o.unit || "unidad") + (o.qty !== 1 ? "s" : "") + ' · total ' + money(o.amount) + (o.payment ? ' · ' + esc(o.payment) : '') + '</div></button>';
+    var byCat = {};
+    stats.forEach(function (x) { (byCat[x.category] = byCat[x.category] || []).push(x); });
+    var cmp = function (a, b) { return a.localeCompare(b, "es", { sensitivity: "base" }); };
+    Object.keys(byCat).sort(cmp).forEach(function (cat) {
+      var list = byCat[cat].sort(function (a, b) { return cmp(a.name, b.name); });
+      html += '<div class="card"><div class="cathead"><span class="ico">' + (CAT_EMOJI[cat] || "🛒") + '</span><b>' + esc(cat) + '</b><span class="small">· ' + list.length + '</span></div>' + list.map(function (x) {
+        var open = state.pcmp === x.key;
+        var row = '<button class="pbtn" data-act="pcmp" data-k="' + esc(x.key) + '" aria-pressed="' + open + '"><div class="prod"><div class="line"><span class="n"><span class="ico">' + x.icon + '</span>' + esc(x.name) + '</span><span class="v">' + x.count + (x.count === 1 ? " compra" : " compras") + '</span></div>' +
+          (x.count > 1 ? '<div class="small">Desde ' + money(x.min) + ' hasta ' + money(x.max) + '</div>' : '') + '</div></button>';
+        if (open) row += '<div class="buys">' + x.occ.map(function (o) {
+          var cls = x.count > 1 ? (o.price === x.min ? " best" : (o.price === x.max ? " worst" : "")) : "";
+          return '<button class="pricebox' + cls + '" data-act="open" data-rt="precios" data-id="' + esc(o.pid) + '" data-idx="' + o.idx + '"><div class="up"><span>' + esc(o.name || x.name) + ' · ' + fdateShort(o.date) + ' · ' + esc(o.store) + '</span><b>' + money(o.price) + ' x ' + esc(o.unit || "unidad") + (o.perKgTxt ? ' <span class="small">(' + esc(o.perKgTxt) + ')</span>' : '') + '</b></div>' +
+            '<div class="small">' + o.qty + ' ' + esc(o.unit || "unidad") + (o.qty !== 1 ? "s" : "") + ' · total ' + money(o.amount) + (o.payment ? ' · ' + esc(o.payment) : '') + '</div></button>';
+        }).join("") + '</div>';
+        return row;
       }).join("") + '</div>';
-      return row;
-    }).join("") + '</div>';
+    });
     return html;
   }
 
