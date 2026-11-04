@@ -88,14 +88,14 @@ textarea { min-height:140px; resize:vertical; font-size:13px; }
 .cathead[aria-expanded="true"] .chev { transform:rotate(45deg); }
 .tiles { display:grid; grid-template-columns:repeat(auto-fill,minmax(96px,1fr)); gap:14px 12px; margin-top:12px; }
 .tile { display:flex; flex-direction:column; align-items:center; gap:6px; background:none; border:0; padding:0; text-align:center; min-width:0; }
-.timg { display:flex; align-items:center; justify-content:center; width:100%; aspect-ratio:1/1; border-radius:14px; background:var(--bg); background:color-mix(in srgb, var(--c, #888) 22%, var(--bg)); color:var(--c, var(--muted)); font-size:34px; font-weight:700; overflow:hidden; }
-.timg img { width:100%; height:100%; object-fit:cover; display:block; }
+.timg { display:flex; align-items:center; justify-content:center; width:100%; aspect-ratio:1/1; border-radius:14px; background:#f4f2ec; overflow:hidden; }
+.timg svg { width:86%; height:86%; display:block; }
 .tname { font-size:13px; line-height:1.2; max-width:100%; overflow-wrap:anywhere; }
 .tile[aria-pressed="true"] .timg { outline:2px solid var(--accent); outline-offset:2px; }
 .sheetwrap { position:fixed; inset:0; z-index:20; background:rgba(0,0,0,.5); display:flex; align-items:flex-end; justify-content:center; }
 .sheet { background:var(--surface); width:100%; max-width:720px; max-height:84vh; overflow:auto; border-radius:18px 18px 0 0; padding:16px 16px calc(18px + env(safe-area-inset-bottom,0px)); }
 .sheethead { display:flex; align-items:center; gap:12px; margin-bottom:12px; }
-.sheethead .timg { width:56px; flex:none; font-size:24px; border-radius:12px; }
+.sheethead .timg { width:60px; flex:none; border-radius:12px; }
 .sheethead h2 { margin:0; flex:1; min-width:0; overflow-wrap:anywhere; }
 .pbtn[aria-pressed="true"] .n { color:var(--accent); font-weight:700; }
 .buys { margin:8px 0 2px; }
@@ -682,54 +682,118 @@ textarea { min-height:140px; resize:vertical; font-size:13px; }
     return html;
   }
 
-  var IMG_KEY = "misuper:img:v1", COLLAPSE_KEY = "misuper:pcollapsed";
-  var imgCache = (function () { try { var o = JSON.parse(localStorage.getItem(IMG_KEY)); return o && typeof o === "object" ? o : {}; } catch (e) { return {}; } })();
-  function saveImgCache() { try { localStorage.setItem(IMG_KEY, JSON.stringify(imgCache)); } catch (e) {} }
+  var COLLAPSE_KEY = "misuper:pcollapsed";
   function loadCollapsed() { try { var o = JSON.parse(localStorage.getItem(COLLAPSE_KEY)); return o && typeof o === "object" ? o : {}; } catch (e) { return {}; } }
-  function initialOf(name) { var m = String(name || "").trim().match(/[A-Za-zÁÉÍÓÚÑáéíóúñ0-9]/); return m ? m[0].toUpperCase() : "?"; }
-  function timgHtml(key, name, category, extra) {
-    var url = imgCache[key];
-    return '<span class="timg' + (url ? ' has' : '') + '" data-img="' + esc(key) + '" data-name="' + esc(name) + '" style="--c:' + catColor(category) + '">' + (url ? '<img src="' + esc(url) + '" alt="" loading="lazy">' : esc(initialOf(name))) + '</span>';
-  }
-  var imgBusy = {}, imgQueue = [], imgActive = 0;
-  function wikiImage(q) {
-    var url = "https://es.wikipedia.org/w/api.php?action=query&format=json&origin=*&generator=search&gsrlimit=4&prop=pageimages&piprop=thumbnail&pithumbsize=240&pilimit=4&gsrsearch=" + encodeURIComponent(q);
-    return fetch(url).then(function (r) { if (!r.ok) throw new Error("http"); return r.json(); }).then(function (j) {
-      var pages = j && j.query && j.query.pages; if (!pages) return "";
-      var arr = Object.keys(pages).map(function (k) { return pages[k]; }).sort(function (a, b) { return (a.index || 0) - (b.index || 0); });
-      for (var i = 0; i < arr.length; i++) if (arr[i].thumbnail && arr[i].thumbnail.source) return arr[i].thumbnail.source;
-      return "";
-    });
-  }
-  function paintTiles(key, url) {
-    document.querySelectorAll(".timg").forEach(function (el) {
-      if (el.dataset.img !== key) return;
-      if (url) { el.innerHTML = ""; var im = new Image(); im.alt = ""; im.src = url; el.appendChild(im); el.classList.add("has"); }
-    });
-  }
-  function pumpImages() {
-    while (imgActive < 3 && imgQueue.length) {
-      var job = imgQueue.shift(); imgActive++;
-      (function (job) {
-        wikiImage(job[1]).then(function (url) { imgCache[job[0]] = url; saveImgCache(); paintTiles(job[0], url); })
-          .catch(function () {}).then(function () { delete imgBusy[job[0]]; imgActive--; pumpImages(); });
-      })(job);
+  var ART = (function () {
+    var S = function (inner) { return '<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><ellipse cx="50" cy="91" rx="28" ry="3.5" fill="#000" opacity=".1"/>' + inner + '</svg>'; };
+    function cup(liq, steam) { return S('<ellipse cx="50" cy="82" rx="36" ry="6" fill="#e3ddd0"/><path d="M24 38h44v22c0 14-9 22-22 22S24 74 24 60z" fill="#fff" stroke="#d8d2c6" stroke-width="2"/><path d="M68 44h5c9 0 11 14 0 16h-5" fill="none" stroke="#d8d2c6" stroke-width="4"/><ellipse cx="46" cy="38" rx="22" ry="5" fill="' + liq + '"/>' + (steam ? '<path d="M38 28c-4-6 4-8 0-14M50 28c-4-6 4-8 0-14M62 28c-4-6 4-8 0-14" fill="none" stroke="#b9b3a7" stroke-width="3" stroke-linecap="round"/>' : '')); }
+    function can(body, band) { return S('<rect x="28" y="20" width="44" height="64" rx="6" fill="' + body + '"/><rect x="28" y="38" width="44" height="26" fill="' + band + '"/><ellipse cx="50" cy="20" rx="22" ry="5" fill="#e9edf2"/><ellipse cx="50" cy="20" rx="14" ry="2.5" fill="#c4ccd6"/><circle cx="50" cy="51" r="7" fill="#fff" opacity=".85"/>'); }
+    function bottle(col, cap, pump) { return S((pump ? '<rect x="42" y="8" width="20" height="5" rx="2" fill="' + cap + '"/><rect x="48" y="12" width="6" height="6" fill="' + cap + '"/>' : '') + '<rect x="42" y="18" width="16" height="12" rx="3" fill="' + cap + '"/><path d="M34 30h32c5 5 7 11 7 20v32c0 4-3 6-7 6H34c-4 0-7-2-7-6V50c0-9 2-15 7-20z" fill="' + col + '"/><rect x="31" y="52" width="38" height="22" rx="3" fill="#fff" opacity=".9"/><circle cx="50" cy="63" r="6" fill="' + col + '" opacity=".6"/>'); }
+    function box(col, deco) { return S('<rect x="26" y="12" width="48" height="72" rx="3" fill="' + col + '"/><rect x="26" y="12" width="48" height="10" fill="#000" opacity=".12"/><circle cx="50" cy="52" r="16" fill="#fff" opacity=".9"/>' + (deco || '')); }
+    function bag(label, deco) { return S('<path d="M24 22h52l3 62H21z" fill="#f4efe6" stroke="#d4cbb8" stroke-width="2"/><path d="M24 22h52l-5 10H29z" fill="#e4dbc5"/><rect x="30" y="44" width="40" height="28" rx="4" fill="' + label + '"/>' + (deco || '')); }
+    var paw = '<ellipse cx="50" cy="63" rx="8" ry="6" fill="#fff"/><circle cx="40" cy="54" r="3.4" fill="#fff"/><circle cx="46" cy="50" r="3.4" fill="#fff"/><circle cx="54" cy="50" r="3.4" fill="#fff"/><circle cx="60" cy="54" r="3.4" fill="#fff"/>';
+    return {
+      manzana: S('<path d="M50 32C40 24 20 28 20 52c0 18 13 34 25 34 3 0 3-1 5-1s2 1 5 1c12 0 25-16 25-34 0-24-20-28-30-20z" fill="#d93a32"/><path d="M50 32c0-8 2-14 8-18" stroke="#6b4a2b" stroke-width="4" fill="none" stroke-linecap="round"/><path d="M54 24c8-8 18-6 20-4-2 8-12 12-20 4z" fill="#4c9a3a"/><ellipse cx="33" cy="48" rx="5" ry="10" fill="#fff" opacity=".25"/>'),
+      banano: S('<path d="M18 26C20 62 46 86 82 74c5-2 4-9-2-9C54 66 42 48 36 26c-1-5-17-6-18 0z" fill="#f6d54a" stroke="#c9a227" stroke-width="2.5" stroke-linejoin="round"/><path d="M18 26c0-5 16-6 18 0" fill="#7a5a2a"/><path d="M26 34c6 22 22 34 44 38" fill="none" stroke="#fff" stroke-width="3" opacity=".35" stroke-linecap="round"/>'),
+      naranja: S('<circle cx="50" cy="54" r="31" fill="#f5a02a"/><path d="M50 24c4-8 12-10 18-8-2 8-10 12-18 8z" fill="#4c9a3a"/><circle cx="40" cy="44" r="7" fill="#fff" opacity=".25"/><circle cx="60" cy="66" r="1.6" fill="#d9831a"/><circle cx="46" cy="70" r="1.6" fill="#d9831a"/><circle cx="66" cy="50" r="1.6" fill="#d9831a"/>'),
+      limon: S('<path d="M10 54c10-24 70-36 80 0-10 24-70 36-80 0z" fill="#f2e04a"/><circle cx="10" cy="54" r="4" fill="#d9c93a"/><circle cx="90" cy="54" r="4" fill="#d9c93a"/><path d="M60 30c4-8 12-10 18-8-2 8-10 12-18 8z" fill="#4c9a3a"/><ellipse cx="38" cy="46" rx="12" ry="5" fill="#fff" opacity=".35"/>'),
+      fresa: S('<path d="M50 86C26 72 18 52 22 40c4-10 18-10 28-4 10-6 24-6 28 4 4 12-4 32-28 46z" fill="#e0334c"/><path d="M50 36l-14-12 12 4-2-12 6 10 10-10-2 12 12-4-14 12z" fill="#3f9a45"/><g fill="#ffe0a0"><ellipse cx="38" cy="50" rx="1.8" ry="2.6"/><ellipse cx="52" cy="48" rx="1.8" ry="2.6"/><ellipse cx="64" cy="54" rx="1.8" ry="2.6"/><ellipse cx="44" cy="62" rx="1.8" ry="2.6"/><ellipse cx="58" cy="66" rx="1.8" ry="2.6"/><ellipse cx="50" cy="76" rx="1.8" ry="2.6"/></g>'),
+      uva: S('<path d="M50 22c0-8 2-12 8-14" stroke="#6b4a2b" stroke-width="4" fill="none" stroke-linecap="round"/><path d="M52 16c8-8 20-6 22-2-4 8-14 10-22 2z" fill="#4c9a3a"/><g fill="#7b4fa3"><circle cx="34" cy="38" r="12"/><circle cx="56" cy="36" r="12"/><circle cx="72" cy="46" r="11"/><circle cx="42" cy="56" r="12"/><circle cx="62" cy="58" r="12"/><circle cx="52" cy="76" r="11"/></g><g fill="#fff" opacity=".3"><circle cx="30" cy="34" r="3"/><circle cx="52" cy="32" r="3"/><circle cx="38" cy="52" r="3"/><circle cx="58" cy="54" r="3"/></g>'),
+      sandia: S('<path d="M8 32h84a42 42 0 0 1-84 0z" fill="#3f9a45"/><path d="M14 32h72a36 36 0 0 1-72 0z" fill="#f3f0dc"/><path d="M18 32h64a32 32 0 0 1-64 0z" fill="#e8445a"/><g fill="#2a1a1a"><ellipse cx="36" cy="44" rx="2" ry="3.5"/><ellipse cx="50" cy="52" rx="2" ry="3.5"/><ellipse cx="64" cy="44" rx="2" ry="3.5"/><ellipse cx="44" cy="40" rx="2" ry="3.5"/><ellipse cx="58" cy="60" rx="2" ry="3.5"/></g>'),
+      pina: S('<path d="M50 40L38 12l10 8 2-14 6 14 10-8z" fill="#3f9a45"/><ellipse cx="50" cy="62" rx="23" ry="27" fill="#f0b323"/><path d="M34 44l32 36M46 38l26 30M30 56l24 26M66 40L34 78M54 36L28 66M70 52L46 84" stroke="#c98a12" stroke-width="2" fill="none"/>'),
+      mango: S('<path d="M30 30c20-14 56-6 56 28 0 22-20 30-38 28C26 84 12 54 30 30z" fill="#f0a53a"/><path d="M60 26c14 4 26 16 24 34-8-10-14-22-24-34z" fill="#e2603a" opacity=".75"/><path d="M40 24c2-8 10-12 18-10-2 8-10 12-18 10z" fill="#4c9a3a"/><ellipse cx="38" cy="50" rx="5" ry="10" fill="#fff" opacity=".25"/>'),
+      aguacate: S('<path d="M50 8C38 8 34 28 24 44c-10 18-2 42 26 42s36-24 26-42C66 28 62 8 50 8z" fill="#3b5d2a"/><path d="M50 18c-8 0-10 18-18 32-8 14-2 30 18 30s26-16 18-30C60 36 58 18 50 18z" fill="#c8de7a"/><circle cx="50" cy="62" r="13" fill="#8a5a33"/><ellipse cx="46" cy="58" rx="4" ry="3" fill="#fff" opacity=".3"/>'),
+      tomate: S('<ellipse cx="50" cy="56" rx="33" ry="29" fill="#e33b2e"/><path d="M50 30l-8 7-12-2 8 9-6 8 10-4 8 8 8-8 10 4-6-8 8-9-12 2z" fill="#3f9a45"/><ellipse cx="34" cy="50" rx="6" ry="9" fill="#fff" opacity=".25"/>'),
+      cebolla: S('<path d="M50 10c2 12 6 16 14 24 16 14 16 46-14 54-30-8-30-40-14-54 8-8 12-12 14-24z" fill="#d8a15a"/><path d="M50 18c-8 20-18 40-14 62M50 18c8 20 18 40 14 62M50 18v68" stroke="#b57a3d" stroke-width="2" fill="none"/><path d="M44 88l-4 4m10-4v6m6-6l4 4" stroke="#b57a3d" stroke-width="2" stroke-linecap="round"/>'),
+      ajo: S('<path d="M50 10c2 8 4 14 10 20 16 10 24 30 14 44-8 12-40 12-48 0-10-14-2-34 14-44 6-6 8-12 10-20z" fill="#f5efe2" stroke="#d9cdb4" stroke-width="2"/><path d="M50 30c-6 14-12 30-8 48M50 30c6 14 12 30 8 48M50 30v50" stroke="#d9cdb4" stroke-width="2" fill="none"/>'),
+      zanahoria: S('<path d="M22 28C30 16 50 20 56 30c10 16 22 38 32 56-22-4-48-20-62-38-8-10-8-14-4-20z" fill="#f08a24"/><path d="M36 38l8-2M46 52l8-2M58 62l8-2M70 76l8-2" stroke="#c96a12" stroke-width="2.5" stroke-linecap="round"/><path d="M24 26c-6-8-8-12-8-18M30 22c-2-8 0-12 4-18M36 24c4-6 8-8 14-8" stroke="#3f9a45" stroke-width="5" stroke-linecap="round" fill="none"/>'),
+      papa: S('<path d="M16 54c0-20 26-32 46-28 18 4 24 18 20 32-6 20-30 28-48 22C22 76 16 66 16 54z" fill="#c99a5b"/><g fill="#a37a3f"><circle cx="34" cy="48" r="2.5"/><circle cx="56" cy="40" r="2.5"/><circle cx="66" cy="62" r="2.5"/><circle cx="42" cy="68" r="2.5"/><circle cx="72" cy="46" r="2"/></g><ellipse cx="32" cy="40" rx="8" ry="4" fill="#fff" opacity=".2"/>'),
+      pepino: S('<rect x="12" y="38" width="76" height="26" rx="13" fill="#4f9a3a" transform="rotate(-25 50 50)"/><g fill="#a5d27c" transform="rotate(-25 50 50)"><circle cx="28" cy="46" r="2.2"/><circle cx="44" cy="56" r="2.2"/><circle cx="58" cy="46" r="2.2"/><circle cx="72" cy="56" r="2.2"/></g><path d="M24 62c14-8 30-20 44-34" stroke="#fff" stroke-width="3" opacity=".25" fill="none" stroke-linecap="round"/>'),
+      lechuga: S('<circle cx="50" cy="54" r="35" fill="#5fae42"/><circle cx="50" cy="54" r="26" fill="#86cb55"/><circle cx="50" cy="56" r="16" fill="#b2e07a"/><path d="M50 84V40M50 66l-14-12M50 66l14-12M50 52l-8-10M50 52l8-10" stroke="#e6f6c8" stroke-width="2.5" fill="none" stroke-linecap="round"/>'),
+      pimenton: S('<path d="M28 34c6-8 16-8 22-2 6-6 16-6 22 2 12 14 10 40-4 50-8 5-26 5-34 0-14-10-16-36-6-50z" fill="#d9352a"/><path d="M44 30c0-8 4-14 6-16 2 2 6 8 6 16z" fill="#3f9a45"/><path d="M40 40c-6 10-6 24-2 34M60 40c6 10 6 24 2 34" stroke="#b02218" stroke-width="2" fill="none"/><ellipse cx="34" cy="50" rx="4" ry="9" fill="#fff" opacity=".25"/>'),
+      berenjena: S('<path d="M60 16c14 4 16 14 12 24-4 12-16 30-32 40-14 8-26 0-22-14 4-12 12-24 20-34 8-10 14-18 22-16z" fill="#6a2f7a"/><path d="M54 12l20 6-4 10-14-2z" fill="#3f9a45"/><ellipse cx="46" cy="52" rx="4" ry="12" fill="#fff" opacity=".2" transform="rotate(35 46 52)"/>'),
+      maiz: S('<path d="M50 8c14 0 20 18 18 38-2 18-8 30-18 30S34 64 32 46C30 26 36 8 50 8z" fill="#f4cd3a"/><path d="M40 20v50M50 14v58M60 20v50M34 34h32M33 48h34M35 62h30" stroke="#d9a920" stroke-width="1.6" fill="none"/><path d="M50 90C28 84 22 62 28 42c6 18 14 32 22 48zM50 90c22-6 28-28 22-48-6 18-14 32-22 48z" fill="#6fa83f"/>'),
+      brocoli: S('<path d="M42 56h16l4 30H38z" fill="#8dc26a"/><g fill="#3e8f3a"><circle cx="32" cy="42" r="16"/><circle cx="50" cy="30" r="18"/><circle cx="68" cy="42" r="16"/><circle cx="50" cy="48" r="16"/></g><g fill="#fff" opacity=".18"><circle cx="44" cy="24" r="5"/><circle cx="28" cy="38" r="4"/><circle cx="66" cy="38" r="4"/></g>'),
+      hongo: S('<path d="M12 56C12 28 30 12 50 12s38 16 38 44z" fill="#b5754a"/><rect x="37" y="54" width="26" height="30" rx="9" fill="#f2e4cf"/><g fill="#f2e4cf"><circle cx="34" cy="38" r="5"/><circle cx="58" cy="30" r="4"/><circle cx="68" cy="46" r="4"/><circle cx="48" cy="44" r="3"/></g>'),
+      pollo: S('<ellipse cx="42" cy="42" rx="28" ry="22" fill="#d9822b" transform="rotate(-35 42 42)"/><ellipse cx="34" cy="34" rx="12" ry="6" fill="#fff" opacity=".22" transform="rotate(-35 34 34)"/><path d="M58 60l22 22" stroke="#f7f1e3" stroke-width="10" stroke-linecap="round"/><circle cx="82" cy="78" r="6" fill="#f7f1e3"/><circle cx="76" cy="84" r="6" fill="#f7f1e3"/>'),
+      carne: S('<path d="M14 46c0-16 20-28 42-26 22 2 32 14 30 28-2 18-20 34-42 32C26 78 14 60 14 46z" fill="#c4423c"/><path d="M20 48c0-10 14-20 32-18" fill="none" stroke="#f4cfc4" stroke-width="5" stroke-linecap="round"/><circle cx="44" cy="52" r="9" fill="#f4e6e0"/><circle cx="44" cy="52" r="4" fill="#e3bfb5"/><path d="M62 40l8 6M58 62l10 2" stroke="#f1b0a6" stroke-width="3" stroke-linecap="round"/>'),
+      tocino: S('<path d="M10 26q14-10 27 0t27 0 26 2v14q-13 10-26 0t-27 0-27-2z" fill="#d95b50"/><path d="M10 34q14-10 27 0t27 0 26 2" fill="none" stroke="#f3c9b6" stroke-width="4"/><path d="M10 56q14-10 27 0t27 0 26 2v14q-13 10-26 0t-27 0-27-2z" fill="#d95b50"/><path d="M10 64q14-10 27 0t27 0 26 2" fill="none" stroke="#f3c9b6" stroke-width="4"/>'),
+      pescado: S('<ellipse cx="44" cy="50" rx="32" ry="20" fill="#5b9bc9"/><path d="M70 50l20-18v36z" fill="#4682b0"/><path d="M20 54c12 10 40 10 48 0-8 14-40 16-48 0z" fill="#cfe5f4"/><circle cx="28" cy="46" r="4" fill="#fff"/><circle cx="28" cy="46" r="1.8" fill="#223"/><path d="M38 38c4 6 4 18 0 24" stroke="#3c76a0" stroke-width="3" fill="none" stroke-linecap="round"/>'),
+      camaron: S('<path d="M70 26C46 18 20 32 22 58c2 14 14 22 28 18" fill="none" stroke="#f08a6a" stroke-width="16" stroke-linecap="round"/><path d="M50 76l-6 10 14-2zM50 76l8 6" fill="#f08a6a"/><path d="M34 30l2 12M46 28l2 12M26 44l10 4M24 56l10 2" stroke="#c9604a" stroke-width="3" stroke-linecap="round"/><circle cx="72" cy="26" r="3" fill="#223"/><path d="M76 22c8-6 12-6 16-4" stroke="#f08a6a" stroke-width="3" fill="none" stroke-linecap="round"/>'),
+      salchicha: S('<rect x="10" y="38" width="80" height="24" rx="12" fill="#c8574a" transform="rotate(-20 50 50)"/><path d="M20 52l54-18" stroke="#fff" stroke-width="3" opacity=".3" stroke-linecap="round"/><path d="M16 66l6-6M82 38l6-6" stroke="#8a2e24" stroke-width="3" stroke-linecap="round"/>'),
+      jamon: S('<path d="M14 30c22-12 50-12 72 0v38c-22 12-50 12-72 0z" fill="#f09aa0"/><path d="M14 30c22-12 50-12 72 0" fill="none" stroke="#fbd0d2" stroke-width="5"/><path d="M26 46c14 6 34 6 48 0M26 58c14 6 34 6 48 0" stroke="#e57a84" stroke-width="2.5" fill="none"/>'),
+      huevo: S('<path d="M50 10C34 10 22 42 22 58a28 28 0 0 0 56 0C78 42 66 10 50 10z" fill="#f6efe0" stroke="#d8cdb6" stroke-width="2"/><ellipse cx="38" cy="40" rx="6" ry="12" fill="#fff" opacity=".6" transform="rotate(15 38 40)"/>'),
+      leche: S('<path d="M28 32L50 14l22 18z" fill="#dfe7f1"/><rect x="28" y="32" width="44" height="54" fill="#fff" stroke="#c8d2de" stroke-width="2"/><rect x="28" y="48" width="44" height="22" fill="#3b82c4"/><path d="M50 52c-4 6-6 8-6 11a6 6 0 0 0 12 0c0-3-2-5-6-11z" fill="#fff"/>'),
+      queso: S('<path d="M10 74L74 24c8 4 14 12 16 20v30z" fill="#f4c542"/><path d="M10 74L74 24c8 4 14 12 16 20" fill="none" stroke="#f9e08a" stroke-width="5" stroke-linejoin="round"/><g fill="#e0a823"><circle cx="62" cy="58" r="7"/><circle cx="42" cy="66" r="4.5"/><circle cx="76" cy="46" r="4"/><circle cx="30" cy="70" r="3"/></g>'),
+      yogurt: S('<rect x="22" y="22" width="56" height="10" rx="3" fill="#cfd8e3"/><path d="M26 32h48l-6 52H32z" fill="#fff" stroke="#d5dbe3" stroke-width="2"/><path d="M29 54h42l-3 20H32z" fill="#e85d8a"/><circle cx="50" cy="64" r="5" fill="#fff" opacity=".8"/>'),
+      mantequilla: S('<polygon points="12,48 28,34 92,34 76,48" fill="#fbeb98"/><rect x="12" y="48" width="64" height="30" fill="#f6dc62"/><polygon points="76,48 92,34 92,64 76,78" fill="#e7c845"/><rect x="12" y="58" width="64" height="10" fill="#fff" opacity=".7"/>'),
+      pan: S('<path d="M14 54c0-18 15-28 36-28s36 10 36 28v24c0 4-4 8-8 8H22c-4 0-8-4-8-8z" fill="#d49a4c"/><path d="M30 38l10 12M46 34l10 14M62 38l8 10" stroke="#f0c27a" stroke-width="4" stroke-linecap="round"/><path d="M14 54c4-6 66-6 72 0" stroke="#b97a30" stroke-width="2" fill="none"/>'),
+      croissant: S('<path d="M10 64c6-28 24-42 40-42s34 14 40 42c-6 6-14 4-20 0-6 6-14 6-20 0-6 6-14 6-20 0-6 4-14 6-20 0z" fill="#e0a03f"/><path d="M34 30l-6 24M50 26v26M66 30l6 24" stroke="#b97a30" stroke-width="2.5" stroke-linecap="round"/><path d="M26 36c8-8 20-10 28-8" stroke="#f3c97a" stroke-width="4" fill="none" stroke-linecap="round"/>'),
+      arroz: S('<path d="M14 52h72a36 32 0 0 1-72 0z" fill="#3b6fb0"/><path d="M18 52c2-20 16-30 32-30s30 10 32 30z" fill="#fbfaf5" stroke="#e5e1d3" stroke-width="2"/><g fill="#e5e1d3"><ellipse cx="38" cy="40" rx="4" ry="1.6" transform="rotate(-20 38 40)"/><ellipse cx="54" cy="34" rx="4" ry="1.6" transform="rotate(15 54 34)"/><ellipse cx="62" cy="44" rx="4" ry="1.6"/><ellipse cx="44" cy="46" rx="4" ry="1.6" transform="rotate(25 44 46)"/></g>'),
+      pasta: S('<ellipse cx="50" cy="70" rx="40" ry="14" fill="#eef1f5" stroke="#d4dae2" stroke-width="2"/><g fill="none" stroke="#f0c850" stroke-width="5"><ellipse cx="50" cy="52" rx="26" ry="13"/><ellipse cx="50" cy="52" rx="22" ry="11" transform="rotate(30 50 52)"/><ellipse cx="50" cy="52" rx="22" ry="11" transform="rotate(-30 50 52)"/></g><circle cx="50" cy="46" r="10" fill="#d9352a"/><circle cx="47" cy="43" r="3" fill="#fff" opacity=".3"/>'),
+      frijol: S('<g fill="#8a2f2a"><ellipse cx="34" cy="36" rx="17" ry="10" transform="rotate(-30 34 36)"/><ellipse cx="64" cy="34" rx="17" ry="10" transform="rotate(25 64 34)"/><ellipse cx="30" cy="64" rx="17" ry="10" transform="rotate(20 30 64)"/><ellipse cx="64" cy="64" rx="17" ry="10" transform="rotate(-25 64 64)"/></g><g fill="#fff" opacity=".25"><ellipse cx="30" cy="32" rx="6" ry="2.5" transform="rotate(-30 30 32)"/><ellipse cx="62" cy="30" rx="6" ry="2.5" transform="rotate(25 62 30)"/><ellipse cx="26" cy="60" rx="6" ry="2.5" transform="rotate(20 26 60)"/><ellipse cx="60" cy="60" rx="6" ry="2.5" transform="rotate(-25 60 60)"/></g>'),
+      aceite: S('<rect x="42" y="8" width="16" height="12" rx="3" fill="#6b8f2a"/><path d="M38 20h24c6 6 10 14 10 26v36c0 4-3 6-7 6H35c-4 0-7-2-7-6V46c0-12 4-20 10-26z" fill="#e0b92a"/><rect x="32" y="52" width="36" height="22" rx="3" fill="#fff" opacity=".9"/><ellipse cx="50" cy="63" rx="6" ry="8" fill="#6b8f2a"/><ellipse cx="38" cy="36" rx="4" ry="9" fill="#fff" opacity=".3"/>'),
+      sal: S('<path d="M34 32h32l6 52H28z" fill="#f4f6f9" stroke="#cfd6df" stroke-width="2"/><path d="M32 20c0-6 6-10 18-10s18 4 18 10v12H32z" fill="#9aa5b3"/><g fill="#5d6773"><circle cx="42" cy="20" r="1.8"/><circle cx="50" cy="16" r="1.8"/><circle cx="58" cy="20" r="1.8"/><circle cx="50" cy="24" r="1.8"/></g><rect x="36" y="50" width="28" height="18" rx="3" fill="#3b82c4" opacity=".85"/>'),
+      azucar: bag('#3b82c4', '<circle cx="50" cy="58" r="8" fill="#fff" opacity=".9"/>'),
+      harina: bag('#d9a04a', '<path d="M50 66V50M50 56l-6-5M50 56l6-5M50 62l-6-5M50 62l6-5" stroke="#fff" stroke-width="2" fill="none" stroke-linecap="round"/>'),
+      cafe: cup('#6b4226', true),
+      te: cup('#c98a3a', true),
+      lata: can('#c9d1da', '#d9534f'),
+      soda: can('#d6312b', '#fff'),
+      agua: S('<rect x="42" y="8" width="16" height="10" rx="2" fill="#2f7fd0"/><path d="M38 18h24l6 14v50c0 4-3 6-6 6H38c-3 0-6-2-6-6V32z" fill="#cfe9f7" stroke="#8cc4e6" stroke-width="2"/><rect x="32" y="46" width="36" height="22" fill="#3b9be0"/><path d="M36 58c4-4 8-4 12 0s8 4 12 0" fill="none" stroke="#fff" stroke-width="2.5" opacity=".8"/>'),
+      jugo: S('<rect x="30" y="26" width="40" height="58" rx="3" fill="#f39a2a"/><path d="M30 26l8-8h24l8 8z" fill="#f7b657"/><path d="M58 18l6-12h12" stroke="#e24a4a" stroke-width="3" fill="none" stroke-linecap="round"/><circle cx="50" cy="56" r="11" fill="#fff" opacity=".9"/><circle cx="50" cy="56" r="8" fill="#f5a02a"/>'),
+      cerveza: S('<rect x="43" y="6" width="14" height="6" rx="2" fill="#d6a437"/><path d="M44 12h12v22c0 6 12 14 12 26v22c0 4-3 6-6 6H38c-3 0-6-2-6-6V60c0-12 12-20 12-26z" fill="#7a4a1c"/><rect x="33" y="58" width="34" height="20" rx="2" fill="#f3e3b0"/><circle cx="50" cy="68" r="5" fill="#d6a437"/>'),
+      vino: S('<rect x="45" y="6" width="10" height="26" fill="#355a3b"/><rect x="45" y="6" width="10" height="7" fill="#8a2230"/><path d="M45 32c-10 8-14 14-14 24v28c0 3 2 5 5 5h28c3 0 5-2 5-5V56c0-10-4-16-14-24z" fill="#355a3b"/><rect x="34" y="58" width="32" height="20" rx="2" fill="#f3ecda"/><circle cx="50" cy="68" r="5" fill="#8a2230"/>'),
+      pringles: S('<rect x="32" y="14" width="36" height="72" rx="4" fill="#d6312b"/><rect x="30" y="8" width="40" height="9" rx="3" fill="#e9e9e9"/><rect x="32" y="40" width="36" height="22" fill="#f5e6c8"/><ellipse cx="50" cy="51" rx="14" ry="8" fill="#f5c542"/><path d="M42 50c4 3 12 3 16 0" stroke="#b27a14" stroke-width="2" fill="none" stroke-linecap="round"/>'),
+      snack: S('<path d="M22 14h56l-5 8 5 62H22l5-62z" fill="#f2b632"/><path d="M22 14l4 6 4-6 4 6 4-6 4 6 4-6 4 6 4-6 4 6 4-6 4 6 4-6" fill="none" stroke="#d99a1e" stroke-width="2"/><ellipse cx="50" cy="52" rx="20" ry="14" fill="#d6312b"/><ellipse cx="50" cy="52" rx="10" ry="6" fill="#f5e6c8"/>'),
+      galleta: S('<circle cx="50" cy="52" r="34" fill="#d9a45b"/><circle cx="50" cy="52" r="34" fill="none" stroke="#b9823a" stroke-width="3"/><g fill="#5a331a"><ellipse cx="36" cy="40" rx="5" ry="4"/><ellipse cx="60" cy="38" rx="5" ry="4"/><ellipse cx="68" cy="58" rx="5" ry="4"/><ellipse cx="46" cy="62" rx="5" ry="4"/><ellipse cx="30" cy="60" rx="4" ry="3.5"/><ellipse cx="52" cy="50" rx="4" ry="3.5"/></g>'),
+      chocolate: S('<rect x="26" y="14" width="48" height="72" rx="4" fill="#6b3a1e"/><path d="M26 38h48M26 62h48M42 14v72M58 14v72" stroke="#8a5430" stroke-width="2" fill="none"/><path d="M26 62h48v20a4 4 0 0 1-4 4H30a4 4 0 0 1-4-4z" fill="#d6312b"/><path d="M26 62h48" stroke="#f3c542" stroke-width="3"/>'),
+      helado: S('<path d="M32 50h36L50 90z" fill="#e0a85a"/><path d="M38 56l22 0M42 68l14 0M34 52l16 38M66 52L50 90" stroke="#b9823a" stroke-width="2" fill="none"/><circle cx="50" cy="38" r="22" fill="#f7a8c4"/><path d="M30 46c4 8 12 8 14 2 2 6 10 8 14 0 2 6 8 6 12 0" fill="#fff" opacity=".5"/><circle cx="50" cy="14" r="5" fill="#d6312b"/>'),
+      caramelo: S('<circle cx="50" cy="50" r="19" fill="#e8445a"/><path d="M33 50L12 36v28zM67 50l21-14v28z" fill="#f08ca0"/><path d="M38 42c8-6 16-6 24 0" stroke="#fff" stroke-width="4" fill="none" opacity=".6" stroke-linecap="round"/><path d="M36 58c8 6 20 6 28 0" stroke="#fff" stroke-width="3" fill="none" opacity=".4" stroke-linecap="round"/>'),
+      cereal: box('#3b82c4', '<circle cx="42" cy="48" r="4" fill="#f0b323"/><circle cx="56" cy="46" r="4" fill="#d9822b"/><circle cx="50" cy="58" r="4" fill="#f0b323"/>'),
+      detergente: bottle('#3aa6d9', '#2d7fa8', false),
+      cloro: bottle('#e8d84a', '#4a9ad9', false),
+      shampoo: bottle('#8a63c9', '#5d3f9a', true),
+      rollon: S('<rect x="34" y="40" width="32" height="46" rx="8" fill="#5bb5c9"/><path d="M34 44c0-18 8-26 16-26s16 8 16 26z" fill="#e9eef5"/><circle cx="50" cy="16" r="6" fill="#cfd8e3"/><rect x="38" y="56" width="24" height="16" rx="3" fill="#fff" opacity=".9"/>'),
+      dental: S('<path d="M12 64h46l8 4v8l-8 4H12z" fill="#fff" stroke="#cfd8e3" stroke-width="2"/><rect x="10" y="62" width="8" height="18" rx="2" fill="#3b82c4"/><rect x="66" y="64" width="16" height="14" rx="3" fill="#3b82c4"/><rect x="24" y="68" width="30" height="6" rx="3" fill="#3b82c4" opacity=".75"/><rect x="18" y="36" width="52" height="8" rx="4" fill="#e85d8a" transform="rotate(-10 44 40)"/><rect x="62" y="22" width="22" height="12" rx="3" fill="#f5f7fa" stroke="#cfd8e3" stroke-width="1.5" transform="rotate(-10 73 28)"/>'),
+      rollo: S('<path d="M26 28v46c0 6 10 10 22 10s22-4 22-10V28z" fill="#fff" stroke="#d8dde4" stroke-width="2"/><ellipse cx="48" cy="28" rx="22" ry="8" fill="#fff" stroke="#d8dde4" stroke-width="2"/><ellipse cx="48" cy="28" rx="8" ry="3" fill="#b9a27c"/><path d="M26 44c8 4 36 4 44 0M26 58c8 4 36 4 44 0" stroke="#e5e9ee" stroke-width="2" fill="none"/>'),
+      panal: S('<path d="M10 34h80v14c0 22-18 38-40 38S10 70 10 48z" fill="#fff" stroke="#cfe0f2" stroke-width="2"/><rect x="10" y="34" width="14" height="10" rx="2" fill="#7cc3e8"/><rect x="76" y="34" width="14" height="10" rx="2" fill="#7cc3e8"/><path d="M36 58c8 8 20 8 28 0" stroke="#cfe0f2" stroke-width="3" fill="none" stroke-linecap="round"/>'),
+      basura: S('<path d="M50 10c-4 6-8 8-16 12-10 8-14 28-8 48 2 8 12 14 24 14s22-6 24-14c6-20 2-40-8-48-8-4-12-6-16-12z" fill="#394150"/><path d="M42 20c8 4 12 4 16 0" stroke="#6b7588" stroke-width="3" fill="none"/><path d="M36 36c-4 14-4 28 0 40" stroke="#fff" stroke-width="3" opacity=".18" fill="none" stroke-linecap="round"/>'),
+      mascota: bag('#6b8f3a', paw),
+      canasta: S('<path d="M30 44c0-20 8-30 20-30s20 10 20 30" fill="none" stroke="#a8743a" stroke-width="5" stroke-linecap="round"/><path d="M12 44h76l-8 40H20z" fill="#c98a4a"/><path d="M12 44h76" stroke="#a8743a" stroke-width="4"/><path d="M26 54l4 24M42 54l2 24M58 54l-2 24M74 54l-4 24M16 62h68M18 74h64" stroke="#a8743a" stroke-width="2" fill="none"/>'),
+      frutas: S('<path d="M12 58h76c0 18-14 28-38 28S12 76 12 58z" fill="#b9823a"/><circle cx="34" cy="46" r="17" fill="#d93a32"/><circle cx="62" cy="44" r="17" fill="#f5a02a"/><circle cx="48" cy="34" r="15" fill="#f2e04a"/><path d="M34 30c2-6 8-8 12-6M62 28c2-6 8-8 12-6" stroke="#3f9a45" stroke-width="4" fill="none" stroke-linecap="round"/><ellipse cx="28" cy="40" rx="4" ry="7" fill="#fff" opacity=".25"/>'),
+      congelados: box('#8fc7ee', '<path d="M50 40v24M38 52h24M41 43l18 18M59 43L41 61" stroke="#3b82c4" stroke-width="2.5" stroke-linecap="round"/>')
+    };
+  })();
+  var ART_RULES = [
+    ["papel higienico|papel toalla|servilleta", "rollo"], ["crema dental|pasta dental|colgate|cepillo", "dental"], ["pringles", "pringles"],
+    ["papas fritas|papitas|doritos|cheetos|tostitos|nachos|snack|chips|platanito", "snack"],
+    ["salsa|sopa|caldo|enlatado|lata|conserva|atun|sardina|mayonesa|ketchup|mostaza|aderezo", "lata"],
+    ["helado", "helado"], ["chocolate|cacao", "chocolate"], ["galleta|oreo", "galleta"], ["caramelo|dulce|gomita|chicle|bombon", "caramelo"], ["cereal|avena|granola", "cereal"],
+    ["jugo|nectar", "jugo"], ["agua", "agua"], ["cerveza", "cerveza"], ["vino", "vino"], ["refresco|gaseosa|soda|coca|pepsi|sprite|fanta|malta", "soda"], ["cafe", "cafe"], ["te|manzanilla|infusion", "te"],
+    ["leche", "leche"], ["queso", "queso"], ["yogurt|yogur", "yogurt"], ["mantequilla|margarina", "mantequilla"], ["huevo", "huevo"],
+    ["pollo|pechuga|muslo|alita|gallina", "pollo"], ["tocino|bacon", "tocino"], ["jamon", "jamon"], ["salchicha|chorizo|mortadela|salami", "salchicha"],
+    ["carne|res|bistec|molida|costilla|cerdo|chuleta|lomo", "carne"], ["camaron|langostino|marisco", "camaron"], ["pescado|salmon|tilapia|corvina|filete", "pescado"],
+    ["manzana", "manzana"], ["banano|guineo|platano|banana", "banano"], ["naranja|mandarina", "naranja"], ["limon|lima", "limon"], ["fresa", "fresa"], ["uva", "uva"], ["sandia|melon", "sandia"], ["pina", "pina"], ["mango", "mango"], ["aguacate", "aguacate"],
+    ["tomate", "tomate"], ["cebolla", "cebolla"], ["ajo", "ajo"], ["zanahoria", "zanahoria"], ["papa|patata", "papa"], ["pepino|zuchini|zucchini|calabacin", "pepino"],
+    ["lechuga|repollo|espinaca|acelga|culantro|cilantro|perejil|apio|ensalada", "lechuga"], ["pimenton|aji|chile", "pimenton"], ["berenjena", "berenjena"], ["maiz|elote", "maiz"], ["brocoli|coliflor", "brocoli"], ["hongo|champinon", "hongo"],
+    ["croissant", "croissant"], ["pan|baguette|tostada|bollo|tortilla|pita", "pan"], ["arroz", "arroz"], ["pasta|espagueti|spaghetti|macarron|fideo|tallarin", "pasta"], ["frijol|lenteja|garbanzo|poroto", "frijol"],
+    ["aceite|oliva", "aceite"], ["sal", "sal"], ["azucar|splenda|endulzante", "azucar"], ["harina|maicena", "harina"],
+    ["bolsa basura|basura", "basura"], ["jabon|detergente|suavizante|desinfectante|limpiador|lavaplatos|desengrasante", "detergente"], ["cloro|lavandina", "cloro"],
+    ["shampoo|champu|acondicionador|crema corporal|locion|protector", "shampoo"], ["desodorante", "rollon"], ["panal|toallita", "panal"], ["perro|gato|croqueta|mascota", "mascota"]
+  ];
+  var ART_CAT = { "Frutas y verduras": "frutas", "Carnes y pescados": "carne", "Lácteos y huevos": "leche", "Panadería": "pan", "Despensa": "lata", "Bebidas": "agua", "Snacks y dulces": "snack", "Congelados": "congelados", "Limpieza del hogar": "detergente", "Cuidado personal": "shampoo", "Mascotas": "mascota", "Otros": "canasta" };
+  var artRulesReady = null;
+  function artFor(text, category) {
+    if (!artRulesReady) artRulesReady = ART_RULES.map(function (r) { return [r[0].split("|").map(function (k) { return pkey(k); }), r[1]]; });
+    var padded = " " + pkey(text) + " ";
+    for (var i = 0; i < artRulesReady.length; i++) {
+      var kws = artRulesReady[i][0];
+      for (var j = 0; j < kws.length; j++) if (padded.indexOf(" " + kws[j] + " ") >= 0) return artRulesReady[i][1];
     }
+    return ART_CAT[category] || "canasta";
   }
-  function hydrateImages() {
-    document.querySelectorAll(".timg").forEach(function (el) {
-      var key = el.dataset.img;
-      if (imgCache[key] !== undefined || imgBusy[key]) return;
-      imgBusy[key] = 1; imgQueue.push([key, el.dataset.name]);
-    });
-    pumpImages();
-  }
-  document.addEventListener("error", function (e) {
-    var t = e.target; if (!t || t.tagName !== "IMG") return;
-    var box = t.closest && t.closest(".timg"); if (!box) return;
-    imgCache[box.dataset.img] = ""; saveImgCache();
-    document.querySelectorAll(".timg").forEach(function (el) { if (el.dataset.img === box.dataset.img) { el.classList.remove("has"); el.textContent = initialOf(el.dataset.name); } });
-  }, true);
+  function timgHtml(art) { return '<span class="timg">' + (ART[art] || ART.canasta) + '</span>'; }
   function allStats() {
     var g = {};
     state.purchases.forEach(function (p) {
@@ -737,7 +801,8 @@ textarea { min-height:140px; resize:vertical; font-size:13px; }
         var label = (it.generic || it.name || "Sin nombre").trim(), k = pkey(label);
         var qty = Number(it.qty) || 0, amount = Number(it.amount) || 0;
         if (!qty) return;
-        if (!g[k]) g[k] = { key: k, labels: {}, cats: {}, occ: [] };
+        if (!g[k]) g[k] = { key: k, labels: {}, cats: {}, specifics: {}, occ: [] };
+        var spec = (it.name || "").trim(); if (spec) g[k].specifics[spec] = 1;
         var cat = CATS.indexOf(it.category) >= 0 ? it.category : "Otros"; g[k].cats[cat] = (g[k].cats[cat] || 0) + 1;
         g[k].labels[label] = (g[k].labels[label] || 0) + 1;
         var price = r2(amount / qty);
@@ -752,6 +817,7 @@ textarea { min-height:140px; resize:vertical; font-size:13px; }
       x.max = Math.max.apply(null, x.occ.map(function (o) { return o.price; }));
       x.count = x.occ.length;
       x.category = Object.keys(x.cats).sort(function (a, b) { return x.cats[b] - x.cats[a]; })[0] || "Otros";
+      x.art = artFor(x.name + " " + Object.keys(x.specifics).join(" "), x.category);
       return x;
     });
   }
@@ -773,13 +839,13 @@ textarea { min-height:140px; resize:vertical; font-size:13px; }
       var collapsed = !q && state.pcols[cat];
       html += '<div class="card"><button class="cathead" data-act="pcat" data-k="' + esc(cat) + '" aria-expanded="' + !collapsed + '"><span class="chev"></span><b>' + esc(cat) + '</b><span class="small">' + list.length + '</span></button>';
       if (!collapsed) html += '<div class="tiles">' + list.map(function (x) {
-        return '<button class="tile" data-act="pcmp" data-k="' + esc(x.key) + '" aria-pressed="' + (state.pcmp === x.key) + '">' + timgHtml(x.key, x.name, x.category, "") + '<span class="tname">' + esc(x.name) + '</span></button>';
+        return '<button class="tile" data-act="pcmp" data-k="' + esc(x.key) + '" aria-pressed="' + (state.pcmp === x.key) + '">' + timgHtml(x.art) + '<span class="tname">' + esc(x.name) + '</span></button>';
       }).join("") + '</div>';
       html += '</div>';
     });
     var sel = state.pcmp ? allStats().filter(function (x) { return x.key === state.pcmp; })[0] : null;
     if (sel) {
-      html += '<div class="sheetwrap" data-act="pclose"><div class="sheet" data-act="noop" role="dialog" aria-label="' + esc(sel.name) + '"><div class="sheethead">' + timgHtml(sel.key, sel.name, sel.category, "") + '<h2>' + esc(sel.name) + '</h2><button class="icon" data-act="pclose" aria-label="Cerrar" style="width:44px">✕</button></div>' +
+      html += '<div class="sheetwrap" data-act="pclose"><div class="sheet" data-act="noop" role="dialog" aria-label="' + esc(sel.name) + '"><div class="sheethead">' + timgHtml(sel.art) + '<h2>' + esc(sel.name) + '</h2><button class="icon" data-act="pclose" aria-label="Cerrar" style="width:44px">✕</button></div>' +
         '<p class="small" style="margin:0 0 10px">' + sel.count + (sel.count === 1 ? ' compra' : ' compras') + (sel.count > 1 ? ' · desde ' + money(sel.min) + ' hasta ' + money(sel.max) : '') + '</p>' +
         sel.occ.map(function (o) {
           var cls = sel.count > 1 ? (o.price === sel.min ? " best" : (o.price === sel.max ? " worst" : "")) : "";
@@ -802,7 +868,6 @@ textarea { min-height:140px; resize:vertical; font-size:13px; }
     if (state.draft) updateTotals();
     var onPrecios = state.tab === "precios" && !state.draft;
     document.body.style.overflow = onPrecios && state.pcmp ? "hidden" : "";
-    if (onPrecios) hydrateImages();
   }
 
   // ---------- Acciones ----------
