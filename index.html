@@ -127,14 +127,49 @@ textarea { min-height:140px; resize:vertical; font-size:13px; }
 .nav button[aria-current="page"] { color:var(--accent); font-weight:700; background:var(--accent-soft); }
 .toast { position:fixed; left:50%; transform:translateX(-50%); bottom:calc(86px + env(safe-area-inset-bottom,0px)); background:var(--text); color:var(--bg); padding:10px 16px; border-radius:99px; font-size:14px; z-index:9; max-width:90%; }
 .toast:empty { display:none; }
+.toast.warn { background:var(--warn-bg); color:var(--warn); }
+.toast.err { background:var(--danger); color:#fff; }
 .empty { text-align:center; padding:28px 12px; }
 .empty .big { font-size:44px; }
+.toprow { display:flex; align-items:flex-start; justify-content:space-between; gap:12px; margin-bottom:14px; }
+.toprow h1 { margin:0 0 2px; }
+.toprow .sub { margin:0; }
+.sync-pill { display:inline-flex; align-items:center; gap:6px; font-size:12px; font-weight:600; padding:6px 10px; border-radius:99px; border:1px solid var(--line); background:var(--surface); color:var(--muted); cursor:pointer; white-space:nowrap; }
+.sync-pill.ok { background:var(--accent-soft); color:var(--accent); border-color:transparent; }
+.sync-pill.warn { background:var(--warn-bg); color:var(--warn); border-color:transparent; }
+.sync-pill.err { background:rgba(179,38,30,.12); color:var(--danger); border-color:transparent; }
+.sync-pill .dot2 { width:6px; height:6px; border-radius:50%; background:currentColor; }
+.welcome { background:linear-gradient(135deg, var(--accent-soft), var(--surface)); }
+.welcome h2 { margin-bottom:6px; }
+.searchwrap { position:relative; margin-bottom:10px; }
+.searchwrap input { padding-left:36px; }
+.searchwrap::before { content:"🔍"; position:absolute; left:12px; top:50%; transform:translateY(-50%); font-size:14px; opacity:.55; pointer-events:none; }
+.filterrow { display:flex; gap:8px; overflow-x:auto; padding-bottom:4px; margin-bottom:12px; }
+.spark { display:flex; align-items:flex-end; gap:3px; height:44px; margin:6px 0 4px; }
+.spark > i { flex:1; min-height:2px; background:var(--accent); border-radius:3px 3px 0 0; opacity:.35; }
+.spark > i:last-child { opacity:1; }
+.spark > i.best { background:#2e9d5a; opacity:.9; }
+.spark > i.worst { background:var(--danger); opacity:.7; }
+.compare { font-size:14px; margin:8px 0 0; }
+.compare .up { color:var(--danger); font-weight:600; }
+.compare .down { color:var(--accent); font-weight:600; }
+.dline { display:flex; align-items:baseline; justify-content:space-between; gap:8px; margin-top:4px; }
+.dline .amt { font-weight:600; color:var(--accent); font-variant-numeric:tabular-nums; font-size:14px; }
+.dline .u { font-size:12px; color:var(--muted); }
+.vbadge { font-size:11px; font-weight:700; padding:3px 8px; border-radius:99px; background:var(--warn-bg); color:var(--warn); }
+.vbadge.bad { background:rgba(179,38,30,.12); color:var(--danger); }
+.vbadge.ok { background:var(--accent-soft); color:var(--accent); }
 </style>
 </head>
 <body>
 <div class="wrap">
-  <h1>🛒 Mi Súper</h1>
-  <p class="sub">Tus gastos del supermercado, ítem por ítem.</p>
+  <div class="toprow">
+    <div>
+      <h1>🛒 Mi Súper</h1>
+      <p class="sub">Tus gastos del supermercado, ítem por ítem.</p>
+    </div>
+    <button class="sync-pill" id="syncpill" data-act="sync-status" aria-label="Estado de sincronización"></button>
+  </div>
   <main id="main"></main>
 </div>
 
@@ -161,7 +196,16 @@ textarea { min-height:140px; resize:vertical; font-size:13px; }
   function $(s) { return document.querySelector(s); }
   function esc(s) { return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) { return ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"})[c]; }); }
   function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 6); }
-  function num(v, d) { var n = parseFloat(String(v).replace(",", ".")); return isNaN(n) ? d : n; }
+  function num(v, d) {
+    if (typeof v === "number") return isNaN(v) ? d : v;
+    var s = String(v == null ? "" : v).trim();
+    if (!s) return d;
+    if (/^-?\d{1,3}(,\d{3})+(\.\d+)?$/.test(s)) s = s.replace(/,/g, "");
+    else if (/^-?\d{1,3}(\.\d{3})+(,\d+)?$/.test(s)) s = s.replace(/\./g, "").replace(",", ".");
+    else s = s.replace(",", ".");
+    var n = parseFloat(s);
+    return isNaN(n) ? d : n;
+  }
   function r2(n) { return Math.round(n * 100) / 100; }
   function todayStr() { var d = new Date(); return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0"); }
   function isDate(s) { return /^\d{4}-\d{2}-\d{2}$/.test(String(s || "")); }
@@ -197,8 +241,13 @@ textarea { min-height:140px; resize:vertical; font-size:13px; }
   function cleanVale(v) {
     v = v || {};
     var ab = Number(v.anchorBalance), ra = Number(v.rechargeAmount), rd = parseInt(v.rechargeDay, 10);
-    if (!isDate(v.anchorDate) || isNaN(ab)) return null;
-    return { anchorDate: v.anchorDate, anchorBalance: r2(ab), rechargeAmount: ra > 0 ? r2(ra) : 0, rechargeDay: (rd >= 1 && rd <= 28) ? rd : 18 };
+    if (!isDate(v.anchorDate) || !isFinite(ab)) return null;
+    return {
+      anchorDate: v.anchorDate,
+      anchorBalance: r2(ab),
+      rechargeAmount: isFinite(ra) && ra > 0 ? r2(ra) : 0,
+      rechargeDay: (rd >= 1 && rd <= 28) ? rd : 18
+    };
   }
   function countRecharges(fromExclusive, toInclusive, day) {
     var from = new Date(fromExclusive + "T00:00:00"), to = new Date(toInclusive + "T00:00:00");
@@ -226,8 +275,14 @@ textarea { min-height:140px; resize:vertical; font-size:13px; }
   function getCode() { try { return localStorage.getItem(CODE_KEY) || ""; } catch (e) { return ""; } }
   function setCode(c) { try { if (c) localStorage.setItem(CODE_KEY, c); else localStorage.removeItem(CODE_KEY); } catch (e) {} }
   var toastTimer;
-  function toast(msg) { var t = $("#toast"); t.textContent = msg; clearTimeout(toastTimer); toastTimer = setTimeout(function () { t.textContent = ""; }, 2800); }
-  function persist() { try { localStorage.setItem(KEY, JSON.stringify(state.purchases)); } catch (e) { toast("No se pudo guardar en este navegador"); } }
+  function toast(msg, kind) {
+    var t = $("#toast");
+    t.textContent = msg;
+    t.className = "toast" + (kind ? " " + kind : "");
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(function () { t.textContent = ""; t.className = "toast"; }, 2800);
+  }
+  function persist() { try { localStorage.setItem(KEY, JSON.stringify(state.purchases)); } catch (e) { toast("No se pudo guardar en este navegador", "err"); } }
 
   var SYNC_KEY = "misuper:synced", PEND_KEY = "misuper:pending";
   function isSynced() { try { return !!localStorage.getItem(SYNC_KEY); } catch (e) { return false; } }
@@ -237,9 +292,15 @@ textarea { min-height:140px; resize:vertical; font-size:13px; }
   function validPurchase(p) { return p && p.id && isDate(p.date) && Array.isArray(p.items); }
   function chunk(arr, n) { var out = []; for (var i = 0; i < arr.length; i += n) out.push(arr.slice(i, i + n)); return out; }
 
-  var state = { tab: "resumen", period: "mes", cat: null, prod: null, pay: null, priceQuery: "", pcmp: null, pcols: {}, purchases: load(), draft: null, scan: null, scanError: "", confirmWipe: false, code: getCode(), editCode: false, pasting: false, sync: "off", syncing: false, vale: loadVale(), valeEdit: false, valeSynced: false };
+  var state = {
+    tab: "resumen", period: "mes", cat: null, prod: null, pay: null,
+    priceQuery: "", pcmp: null, pcols: {},
+    purchases: load(), draft: null, scan: null, scanError: "",
+    confirmWipe: false, code: getCode(), editCode: false, pasting: false,
+    sync: "off", syncing: false, vale: loadVale(), valeEdit: false, valeSynced: false,
+    historyQuery: "", historyPay: null
+  };
 
-  // ---------- Sincronización entre dispositivos (vía /api/data) ----------
   function api(op, payload) {
     return fetch("/api/data", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(Object.assign({ op: op, code: state.code }, payload || {})) }).then(function (r) {
       return r.json().catch(function () { return {}; }).then(function (j) {
@@ -250,21 +311,30 @@ textarea { min-height:140px; resize:vertical; font-size:13px; }
   }
   function handleSyncErr(e) {
     if (e && e.code === "nostore") state.sync = "nostore";
-    else if (e && e.code === "code") { state.code = ""; setCode(""); state.sync = "off"; toast("El código de acceso es incorrecto"); }
+    else if (e && e.code === "code") { state.code = ""; setCode(""); state.sync = "off"; toast("El código de acceso es incorrecto", "err"); }
     else state.sync = "error";
   }
+
+  var flushing = false;
   function flush() {
+    if (flushing) return Promise.resolve();
     var pend = getPend();
     if (!pend.s.length && !pend.d.length) return Promise.resolve();
+    flushing = true;
     var saves = state.purchases.filter(function (p) { return pend.s.indexOf(p.id) >= 0; });
     var chain = Promise.resolve();
     chunk(saves, 50).forEach(function (c) { chain = chain.then(function () { return api("bulk", { purchases: c }); }); });
     if (pend.d.length) chain = chain.then(function () { return api("delete_many", { ids: pend.d }); });
     return chain.then(function () {
       var cur = getPend();
-      setPend({ s: cur.s.filter(function (x) { return pend.s.indexOf(x) < 0; }), d: cur.d.filter(function (x) { return pend.d.indexOf(x) < 0; }) });
-    });
+      setPend({
+        s: cur.s.filter(function (x) { return pend.s.indexOf(x) < 0; }),
+        d: cur.d.filter(function (x) { return pend.d.indexOf(x) < 0; })
+      });
+    }).then(done, done);
+    function done() { flushing = false; }
   }
+
   function syncNow() {
     if (!state.code || state.syncing || state.sync === "nostore") return Promise.resolve();
     state.syncing = true;
@@ -290,20 +360,29 @@ textarea { min-height:140px; resize:vertical; font-size:13px; }
       }).catch(function () {}).then(function () { state.valeSynced = true; });
     }).catch(handleSyncErr).then(function () { state.syncing = false; tryOpenHash(); if (!state.draft && !state.scan) render(); });
   }
+
   function trySync() {
-    if (!state.code || state.sync === "nostore") return Promise.resolve();
-    return flush().then(function () { state.sync = "ok"; }).catch(handleSyncErr).then(function () { if (!state.draft && !state.scan) render(); });
+    if (!state.code || state.syncing || state.sync === "nostore") return Promise.resolve();
+    return flush().then(function () { state.sync = "ok"; tryOpenHash(); }).catch(handleSyncErr).then(function () {
+      if (!state.draft && !state.scan) render();
+    });
   }
+
   function saveVale(v) {
     var clean = cleanVale(v);
-    if (!clean) { toast("Revisa el saldo y la fecha"); return false; }
+    if (!clean) { toast("Revisa el saldo y la fecha", "err"); return false; }
     state.vale = clean; state.valeEdit = false; state.valeSynced = true;
     persistVale(clean);
-    if (state.code) api("set_settings", { settings: clean }).catch(function () {});
+    if (state.code) {
+      api("set_settings", { settings: clean }).catch(function () {
+        toast("Saldo guardado solo en este dispositivo", "warn");
+      });
+    }
     return true;
   }
   function pushSave(id) { var p = getPend(); if (p.s.indexOf(id) < 0) p.s.push(id); p.d = p.d.filter(function (x) { return x !== id; }); setPend(p); return trySync(); }
   function pushDelete(id) { var p = getPend(); if (p.d.indexOf(id) < 0) p.d.push(id); p.s = p.s.filter(function (x) { return x !== id; }); setPend(p); return trySync(); }
+
   function openPurchase(id, returnTab, focusIdx) {
     var p = state.purchases.find(function (x) { return x.id === id; }); if (!p) return false;
     state.draft = { id: p.id, store: p.store, date: p.date, payment: p.payment || "", receiptTotal: null, source: p.source || "manual", returnTab: returnTab || "historial", items: p.items.map(function (i) { return { name: i.name, generic: i.generic || "", unit: i.unit || "", sizeQty: i.sizeQty || "", sizeUnit: i.sizeUnit || "", qty: i.qty, amount: i.amount, category: i.category }; }) };
@@ -324,7 +403,7 @@ textarea { min-height:140px; resize:vertical; font-size:13px; }
       pendingHash = null;
       try { history.replaceState(null, "", location.pathname + location.search); } catch (e) {}
     } else if (state.sync === "ok" || state.sync === "nostore" || state.sync === "error") {
-      toast("No encontré esa compra en este dispositivo");
+      toast("No encontré esa compra en este dispositivo", "warn");
       pendingHash = null;
     }
   }
@@ -333,7 +412,6 @@ textarea { min-height:140px; resize:vertical; font-size:13px; }
     api("notify", { id: rec.id, store: rec.store, date: rec.date, payment: rec.payment, count: rec.items.length, total: sumItems(rec.items), isNew: !!isNew }).catch(function () {});
   }
 
-  // ---------- Lectura del recibo (vía /api/scan) ----------
   function compress(file) {
     return new Promise(function (resolve, reject) {
       var url = URL.createObjectURL(file), img = new Image();
@@ -352,6 +430,7 @@ textarea { min-height:140px; resize:vertical; font-size:13px; }
   }
 
   var CLAUDE_PROMPT = 'Lee este recibo de supermercado (moneda: dólares/balboas) y responde SOLO con un JSON, sin texto adicional ni backticks, con esta forma: {"tienda":"nombre del comercio","fecha":"YYYY-MM-DD o cadena vacía si no se ve","total":número con el total pagado,"items":[{"nombre":"nombre legible del producto","producto":"nombre genérico corto para agrupar, ej. Leche, Arroz, Pollo","cantidad":número,"unidad":"kg, lb, unidad, paquete, etc. según cómo se cobró la línea","monto":número con el total final de esa línea (incluye su parte del impuesto si aplica, no lo separes),"categoria":"una de: ' + CATS.join(" | ") + '"}]}. Resta del monto los descuentos de cada línea. No incluyas subtotales, impuestos por separado, cambio, propinas ni puntos de fidelidad como ítems.';
+
   function fromScan(data) {
     var raw = Array.isArray(data) ? { items: data } : (data || {});
     var items = (Array.isArray(raw.items) ? raw.items : []).map(function (x) {
@@ -407,7 +486,6 @@ textarea { min-height:140px; resize:vertical; font-size:13px; }
     });
   }
 
-  // ---------- Análisis ----------
   function inPeriod(p) {
     if (state.period === "todo") return true;
     if (state.period === "corte") { var c = corteRange(new Date()); return p.date >= c.start && p.date <= c.end; }
@@ -418,6 +496,27 @@ textarea { min-height:140px; resize:vertical; font-size:13px; }
   }
   function sumItems(items) { return r2(items.reduce(function (s, it) { return s + (Number(it.amount) || 0); }, 0)); }
   function purchaseTotal(p) { return sumItems(p.items); }
+
+  function previousPeriodTotal() {
+    if (state.period === "todo") return null;
+    var c = corteRange(new Date());
+    var ps = state.purchases.filter(function (p) {
+      if (state.period === "corte") {
+        var prev = corteRange(new Date(new Date(c.start + "T00:00:00").getTime() - 86400000));
+        return p.date >= prev.start && p.date <= prev.end;
+      }
+      var d = new Date(p.date + "T00:00:00"), now = new Date();
+      if (state.period === "mes") {
+        var prevM = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+        return d.getFullYear() === prevM.getFullYear() && d.getMonth() === prevM.getMonth();
+      }
+      var days = state.period === "30" ? 30 : 90;
+      var ago = (now - d) / 86400000;
+      return ago > days && ago <= days * 2;
+    });
+    if (!ps.length) return null;
+    return r2(ps.reduce(function (s, p) { return s + purchaseTotal(p); }, 0));
+  }
 
   function analyze() {
     var ps = state.purchases.filter(inPeriod), all = [];
@@ -469,30 +568,57 @@ textarea { min-height:140px; resize:vertical; font-size:13px; }
     return out;
   }
 
-  // ---------- Vistas ----------
   function codeCard() {
-    return '<div class="card"><h2>Sincroniza tus compras</h2><p class="sub">Ingresa tu código de acceso para ver tus compras en este dispositivo.</p>' +
-      '<label>Código de acceso<input id="codein" type="password" autocomplete="off" autocapitalize="off" placeholder="El APP_CODE que configuraste"></label>' +
-      '<button class="btn" data-act="save-code" style="width:100%;margin-top:10px">Guardar código</button></div>';
+    return '<div class="card"><h2>Sincronización (opcional)</h2>' +
+      '<p class="sub">Ingresa tu código de acceso para ver las mismas compras en otros dispositivos. Si no lo tienes, puedes seguir usando la app solo en este dispositivo.</p>' +
+      '<label>Código de acceso<input id="codein" type="password" autocomplete="off" autocapitalize="off" placeholder="El APP_CODE que configuraste en Vercel"></label>' +
+      '<div class="row" style="margin-top:10px">' +
+      '<button class="btn ghost" data-act="code-cancel">Ahora no</button>' +
+      '<button class="btn" data-act="save-code">Guardar</button></div></div>';
   }
+
   function valeCard() {
     if (state.valeEdit || !state.vale) {
       var v = state.vale || { anchorDate: todayStr(), anchorBalance: "", rechargeAmount: "", rechargeDay: 18 };
-      return '<div class="card"><h2>Saldo VALE</h2>' +
+      return '<div class="card"><h2>Saldo VALE <span class="vbadge">opcional</span></h2>' +
+        '<p class="sub" style="margin:0 0 10px">Configura tu saldo para que se descuente al guardar compras pagadas con VALE.</p>' +
         '<div class="row"><label>Saldo actual<input id="v_bal" type="number" inputmode="decimal" step="0.01" value="' + esc(v.anchorBalance) + '" placeholder="128.54"></label>' +
         '<label>A partir de<input id="v_date" type="date" value="' + esc(v.anchorDate) + '"></label></div>' +
         '<div class="row" style="margin-top:10px"><label>Recarga mensual<input id="v_amt" type="number" inputmode="decimal" step="0.01" value="' + esc(v.rechargeAmount) + '" placeholder="142.50"></label>' +
         '<label>Día de recarga<input id="v_day" type="number" inputmode="numeric" min="1" max="28" value="' + esc(v.rechargeDay) + '"></label></div>' +
-        '<p class="small" style="margin:8px 0 0">El saldo se resta solo al guardar una compra pagada con VALE, y se recarga cada mes en el día indicado.</p>' +
-        '<div class="row" style="margin-top:10px">' + (state.vale ? '<button class="btn ghost" data-act="vale-cancel">Cancelar</button>' : '') + '<button class="btn" data-act="vale-save">Guardar</button></div></div>';
+        '<div class="row" style="margin-top:10px">' + (state.vale ? '<button class="btn ghost" data-act="vale-cancel">Cancelar</button>' : '') +
+        '<button class="btn" data-act="vale-save">Guardar</button></div></div>';
     }
     var bal = valeBalanceAsOf(todayStr());
-    return '<div class="card"><h2>Saldo VALE</h2><div class="kpis" style="grid-template-columns:1fr 1fr">' +
+    var bad = bal < 0;
+    return '<div class="card"><div class="line" style="margin-bottom:8px"><h2 style="margin:0">Saldo VALE</h2>' +
+      '<span class="vbadge ' + (bad ? "bad" : "ok") + '">' + (bad ? "Saldo negativo" : "Disponible") + '</span></div>' +
+      '<div class="kpis" style="grid-template-columns:1fr 1fr">' +
       '<div class="kpi"><b>' + money(bal) + '</b><span>Disponible hoy</span></div>' +
       '<div class="kpi"><b>' + fdateDM(nextRechargeDate(todayStr())) + '</b><span>Próxima recarga (+' + money(state.vale.rechargeAmount) + ')</span></div></div>' +
+      (bad ? '<p class="small" style="color:var(--danger);margin:8px 0 0">Deberías recargar tu VALE. El cálculo puede quedar negativo si no se ha registrado la recarga.</p>' : '') +
       '<button class="chip" data-act="vale-edit" style="margin-top:10px">Editar</button></div>';
   }
-  function viewResumen() { return (state.code ? "" : codeCard()) + valeCard() + viewResumenBody(); }
+
+  function viewResumen() {
+    var html = "";
+    if (!state.code && !state.purchases.length) {
+      html += '<div class="card welcome"><h2>👋 Bienvenido</h2>' +
+        '<p class="sub" style="margin:0 0 12px">Todo se guarda en este dispositivo. Sincronizar con otros dispositivos es <b>opcional</b>.</p>' +
+        '<div class="stack">' +
+        '<button class="btn" data-act="manual">✍️ Empezar sin sincronizar</button>' +
+        '<button class="btn ghost" data-act="code-open">🔗 Configurar sincronización (opcional)</button>' +
+        '</div></div>';
+    } else if (!state.code && state.purchases.length) {
+      html += '<div class="card"><div class="line"><span class="small">Solo en este dispositivo</span>' +
+        '<button class="chip" data-act="code-open">Sincronizar</button></div></div>';
+    } else if (state.editCode || !state.code) {
+      html += codeCard();
+    }
+    html += valeCard() + viewResumenBody();
+    return html;
+  }
+
   function viewResumenBody() {
     if (!state.purchases.length) {
       return '<div class="card empty"><div class="big">🧾</div><h2>Aún no hay compras</h2><p class="sub">Toma una foto de tu recibo y verás en qué gastas más.</p><button class="btn" data-act="tab" data-tab="escanear">Agregar mi primera compra</button></div>';
@@ -508,6 +634,32 @@ textarea { min-height:140px; resize:vertical; font-size:13px; }
     html += '<div class="kpis"><div class="kpi"><b>' + money(a.total) + '</b><span>Total gastado</span></div>' +
       '<div class="kpi"><b>' + a.ps.length + '</b><span>Compras</span></div>' +
       '<div class="kpi"><b>' + money(a.total / a.ps.length) + '</b><span>Promedio por compra</span></div></div>';
+
+    if (state.period !== "todo" && a.total > 0) {
+      var prev = previousPeriodTotal();
+      if (prev != null && prev > 0) {
+        var diff = a.total - prev;
+        var pct = Math.round(Math.abs(diff) / prev * 100);
+        var word = diff > 0 ? "más" : "menos";
+        var cls = diff > 0 ? "up" : "down";
+        html += '<div class="card"><div class="line"><span>Comparado con el período anterior</span>' +
+          '<span class="compare"><span class="' + cls + '">' + (diff > 0 ? "↑" : "↓") + " " + pct + "% " + word + '</span></span></div>' +
+          '<p class="small" style="margin:6px 0 0">Antes: ' + money(prev) + ' · Ahora: ' + money(a.total) + '</p></div>';
+      }
+    }
+
+    var sorted = state.purchases.slice().sort(function (a, b) { return b.date.localeCompare(a.date); });
+    if (sorted.length) {
+      var last = sorted[0];
+      var daysAgo = Math.floor((Date.now() - new Date(last.date + "T00:00:00").getTime()) / 86400000);
+      if (daysAgo <= 7) {
+        html += '<div class="card"><div class="line" style="margin-bottom:8px"><h3 style="margin:0">Última compra</h3>' +
+          '<span class="small">' + (daysAgo === 0 ? "hoy" : daysAgo === 1 ? "ayer" : "hace " + daysAgo + " días") + '</span></div>' +
+          '<button class="buy" data-act="open" data-rt="resumen" data-id="' + esc(last.id) + '">' +
+          '<span>' + esc(last.store) + ' · ' + last.items.length + ' ítems' + (last.payment ? ' · ' + esc(last.payment) : '') + '</span>' +
+          '<b>' + money(purchaseTotal(last)) + '</b></button></div>';
+      }
+    }
 
     var top = a.cats[0];
     if (top && a.total > 0 && top.sum > 0) {
@@ -574,7 +726,7 @@ textarea { min-height:140px; resize:vertical; font-size:13px; }
     if (!state.code || state.editCode) {
       html += '<label>Código de acceso<input id="codein" type="password" autocomplete="off" autocapitalize="off" placeholder="El APP_CODE que configuraste"></label>' +
         '<button class="btn" data-act="save-code">Guardar código</button>' +
-        '<p class="small" style="margin:0">Se pide una sola vez y se guarda en este dispositivo.</p>';
+        '<p class="small" style="margin:0">Se pide una sola vez y se guarda en este dispositivo. Es necesario para leer recibos con IA.</p>';
     } else {
       html += '<button class="btn big" data-act="cam">📷 Tomar foto del recibo</button>' +
         '<button class="btn ghost" data-act="gal">🖼️ Elegir de la galería (hasta 3 fotos)</button>' +
@@ -631,9 +783,10 @@ textarea { min-height:140px; resize:vertical; font-size:13px; }
       '<button class="icon" data-act="del-item" aria-label="Quitar ítem">✕</button></div>' +
       '<div class="r2" style="grid-template-columns:1fr 70px 64px">' +
       '<input data-k="unit" value="' + esc(it.unit || "") + '" placeholder="Unidad (kg, unidad, lb…)" aria-label="Unidad">' +
-      '<input data-k="sizeQty" type="number" inputmode="decimal" step="any" value="' + esc(it.sizeQty || "") + '" placeholder="Tamaño" aria-label="Tamaño del empaque (opcional)" title="Tamaño del empaque, ej. 450">' +
-      '<select data-k="sizeUnit" aria-label="Unidad del tamaño" title="Unidad del tamaño"><option value=""></option>' + SIZE_UNITS.map(function (u) { return '<option' + (u === it.sizeUnit ? ' selected' : '') + '>' + u + '</option>'; }).join("") + '</select></div>' +
-      '<div class="unitline" data-up>' + esc(unitPriceText(it.qty, it.amount, it.unit, it.sizeQty, it.sizeUnit)) + '</div></div>';
+      '<input data-k="sizeQty" type="number" inputmode="decimal" step="any" value="' + esc(it.sizeQty || "") + '" placeholder="Tamaño" aria-label="Tamaño del empaque (opcional)">' +
+      '<select data-k="sizeUnit" aria-label="Unidad del tamaño"><option value=""></option>' + SIZE_UNITS.map(function (u) { return '<option' + (u === it.sizeUnit ? ' selected' : '') + '>' + u + '</option>'; }).join("") + '</select></div>' +
+      '<div class="dline"><span class="u">' + esc(unitPriceText(it.qty, it.amount, it.unit, it.sizeQty, it.sizeUnit)) + '</span><span class="amt">' + money(Number(it.amount) || 0) + '</span></div>' +
+      '</div>';
   }
 
   function viewDraft() {
@@ -656,34 +809,72 @@ textarea { min-height:140px; resize:vertical; font-size:13px; }
     var d = state.draft; if (!d) return;
     var s = sumItems(d.items), el = $("#dsum"), w = $("#dwarn");
     if (el) el.textContent = money(s);
-    if (w) w.textContent = (d.receiptTotal != null && Math.abs(s - d.receiptTotal) > 0.02)
-      ? "El recibo indica un total de " + money(d.receiptTotal) + " y la suma de los ítems es " + money(s) + ". Revisa que no falte o sobre algún ítem." : "";
+    var msgs = [];
+    if (d.receiptTotal != null && Math.abs(s - d.receiptTotal) > 0.02) {
+      msgs.push("El recibo indica un total de " + money(d.receiptTotal) + " y la suma de los ítems es " + money(s) + ". Revisa que no falte o sobre algún ítem.");
+    }
+    if (d.payment === "VALE" && state.vale) {
+      var bal = valeBalanceAsOf(todayStr());
+      if (bal - s < 0 && !d.id) {
+        msgs.push("Esta compra dejaría el saldo VALE en " + money(bal - s) + ". ¿Ya registraste la recarga?");
+      }
+    }
+    if (w) w.textContent = msgs.join(" ");
   }
 
   function syncNote() {
-    if (state.sync === "ok") return "Sincronizado: verás las mismas compras en cualquier dispositivo donde ingreses tu código. Haz un respaldo de vez en cuando.";
-    if (state.sync === "nostore") return "Tus compras se guardan solo en este dispositivo (falta conectar la base de datos en Vercel). En iPhone, agrega la app a la pantalla de inicio y haz respaldos de vez en cuando.";
-    if (state.sync === "error") return "No se pudo sincronizar; se reintentará al abrir la app. Tus compras están a salvo en este dispositivo.";
-    return state.code ? "Sincronizando…" : "Ingresa tu código de acceso en Resumen o Agregar para sincronizar.";
+    if (state.sync === "ok") return "✓ Sincronizado. Verás las mismas compras en cualquier dispositivo donde ingreses tu código.";
+    if (state.sync === "nostore") return "Solo en este dispositivo (falta conectar Upstash Redis en Vercel). Haz respaldos de vez en cuando.";
+    if (state.sync === "error") return "No se pudo sincronizar; se reintentará al abrir la app. Tus compras están a salvo aquí.";
+    if (state.code) return "Sincronizando…";
+    return "Sin código: todo se guarda solo en este dispositivo. Puedes configurarlo en Resumen.";
   }
+
   function viewHistorial() {
+    var q = norm(state.historyQuery || "");
+    var pay = state.historyPay || null;
     var list = state.purchases.slice().sort(function (a, b) { return b.date.localeCompare(a.date); });
-    var html = "";
-    if (!list.length) html += '<div class="card empty"><div class="big">🧾</div><p class="sub" style="margin:0">Todavía no has guardado compras.</p></div>';
-    html += list.map(function (p) {
-      return '<button class="hist" data-act="open" data-id="' + esc(p.id) + '"><div class="line"><span class="n"><b>' + esc(p.store) + '</b></span><span class="v">' + money(purchaseTotal(p)) + '</span></div>' +
-        '<div class="small">' + fdate(p.date) + ' · ' + p.items.length + ' ítems' + (p.payment ? ' · ' + esc(p.payment) : '') + '</div></button>';
-    }).join("");
+    if (q) list = list.filter(function (p) {
+      return norm(p.store).indexOf(q) >= 0 ||
+        p.items.some(function (it) { return norm(it.name).indexOf(q) >= 0 || norm(it.generic).indexOf(q) >= 0; });
+    });
+    if (pay) list = list.filter(function (p) { return (p.payment || "Sin especificar") === pay; });
+
+    var html = '<div class="card">' +
+      '<div class="searchwrap"><input id="hq" value="' + esc(state.historyQuery || "") + '" placeholder="Buscar por tienda o producto…" aria-label="Buscar compras"></div>' +
+      '<div class="filterrow">' +
+      '<button class="chip" data-act="hpay" data-k="" aria-pressed="' + (!pay) + '">Todos</button>' +
+      PAYMENTS.map(function (x) {
+        return '<button class="chip" data-act="hpay" data-k="' + esc(x) + '" aria-pressed="' + (pay === x) + '">' + esc(x) + '</button>';
+      }).join("") +
+      '</div></div>';
+
+    if (!list.length) {
+      html += '<div class="card empty"><div class="big">' + (q || pay ? "🔍" : "🧾") + '</div>' +
+        '<p class="sub" style="margin:0">' + (q || pay ? "No hay compras que coincidan con el filtro." : "Todavía no has guardado compras.") + '</p></div>';
+    } else {
+      html += list.map(function (p) {
+        return '<button class="hist" data-act="open" data-id="' + esc(p.id) + '"><div class="line"><span class="n"><b>' + esc(p.store) + '</b></span><span class="v">' + money(purchaseTotal(p)) + '</span></div>' +
+          '<div class="small">' + fdate(p.date) + ' · ' + p.items.length + ' ítems' + (p.payment ? ' · ' + esc(p.payment) : '') + '</div></button>';
+      }).join("");
+    }
+
     html += '<div class="card"><h3>Datos</h3><div class="stack">';
-    if (state.purchases.length) html += '<button class="btn ghost" data-act="csv">Exportar a CSV (Excel)</button><button class="btn ghost" data-act="backup">Guardar respaldo (JSON)</button>';
+    if (state.purchases.length) {
+      html += '<button class="btn ghost" data-act="csv">Exportar a CSV (Excel)</button>' +
+        '<button class="btn ghost" data-act="backup">Guardar respaldo (JSON)</button>';
+    }
     html += '<button class="btn ghost" data-act="restore">Restaurar respaldo</button>';
-    if (state.purchases.length) html += '<button class="btn danger" data-act="wipe">' + (state.confirmWipe ? "¿Seguro? Toca otra vez para borrar todo" : "Borrar todos los datos") + '</button>';
+    if (state.purchases.length) {
+      html += '<button class="btn danger" data-act="wipe">' + (state.confirmWipe ? "¿Seguro? Toca otra vez para borrar todo" : "Borrar todos los datos") + '</button>';
+    }
     html += '<p class="small" style="margin:0">' + syncNote() + '</p></div></div>';
     return html;
   }
 
   var COLLAPSE_KEY = "misuper:pcollapsed";
   function loadCollapsed() { try { var o = JSON.parse(localStorage.getItem(COLLAPSE_KEY)); return o && typeof o === "object" ? o : {}; } catch (e) { return {}; } }
+
   var ART = (function () {
     var S = function (inner) { return '<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><ellipse cx="50" cy="91" rx="28" ry="3.5" fill="#000" opacity=".1"/>' + inner + '</svg>'; };
     function cup(liq, steam) { return S('<ellipse cx="50" cy="82" rx="36" ry="6" fill="#e3ddd0"/><path d="M24 38h44v22c0 14-9 22-22 22S24 74 24 60z" fill="#fff" stroke="#d8d2c6" stroke-width="2"/><path d="M68 44h5c9 0 11 14 0 16h-5" fill="none" stroke="#d8d2c6" stroke-width="4"/><ellipse cx="46" cy="38" rx="22" ry="5" fill="' + liq + '"/>' + (steam ? '<path d="M38 28c-4-6 4-8 0-14M50 28c-4-6 4-8 0-14M62 28c-4-6 4-8 0-14" fill="none" stroke="#b9b3a7" stroke-width="3" stroke-linecap="round"/>' : '')); }
@@ -792,364 +983,4 @@ textarea { min-height:140px; resize:vertical; font-size:13px; }
       agua: S('<rect x="42" y="8" width="16" height="10" rx="2" fill="#2f7fd0"/><path d="M38 18h24l6 14v50c0 4-3 6-6 6H38c-3 0-6-2-6-6V32z" fill="#cfe9f7" stroke="#8cc4e6" stroke-width="2"/><rect x="32" y="46" width="36" height="22" fill="#3b9be0"/><path d="M36 58c4-4 8-4 12 0s8 4 12 0" fill="none" stroke="#fff" stroke-width="2.5" opacity=".8"/>'),
       jugo: S('<rect x="30" y="26" width="40" height="58" rx="3" fill="#f39a2a"/><path d="M30 26l8-8h24l8 8z" fill="#f7b657"/><path d="M58 18l6-12h12" stroke="#e24a4a" stroke-width="3" fill="none" stroke-linecap="round"/><circle cx="50" cy="56" r="11" fill="#fff" opacity=".9"/><circle cx="50" cy="56" r="8" fill="#f5a02a"/>'),
       cerveza: S('<rect x="43" y="6" width="14" height="6" rx="2" fill="#d6a437"/><path d="M44 12h12v22c0 6 12 14 12 26v22c0 4-3 6-6 6H38c-3 0-6-2-6-6V60c0-12 12-20 12-26z" fill="#7a4a1c"/><rect x="33" y="58" width="34" height="20" rx="2" fill="#f3e3b0"/><circle cx="50" cy="68" r="5" fill="#d6a437"/>'),
-      vino: S('<rect x="45" y="6" width="10" height="26" fill="#355a3b"/><rect x="45" y="6" width="10" height="7" fill="#8a2230"/><path d="M45 32c-10 8-14 14-14 24v28c0 3 2 5 5 5h28c3 0 5-2 5-5V56c0-10-4-16-14-24z" fill="#355a3b"/><rect x="34" y="58" width="32" height="20" rx="2" fill="#f3ecda"/><circle cx="50" cy="68" r="5" fill="#8a2230"/>'),
-      pringles: S('<rect x="32" y="14" width="36" height="72" rx="4" fill="#d6312b"/><rect x="30" y="8" width="40" height="9" rx="3" fill="#e9e9e9"/><rect x="32" y="40" width="36" height="22" fill="#f5e6c8"/><ellipse cx="50" cy="51" rx="14" ry="8" fill="#f5c542"/><path d="M42 50c4 3 12 3 16 0" stroke="#b27a14" stroke-width="2" fill="none" stroke-linecap="round"/>'),
-      snack: S('<path d="M22 14h56l-5 8 5 62H22l5-62z" fill="#f2b632"/><path d="M22 14l4 6 4-6 4 6 4-6 4 6 4-6 4 6 4-6 4 6 4-6 4 6 4-6" fill="none" stroke="#d99a1e" stroke-width="2"/><ellipse cx="50" cy="52" rx="20" ry="14" fill="#d6312b"/><ellipse cx="50" cy="52" rx="10" ry="6" fill="#f5e6c8"/>'),
-      galleta: S('<circle cx="50" cy="52" r="34" fill="#d9a45b"/><circle cx="50" cy="52" r="34" fill="none" stroke="#b9823a" stroke-width="3"/><g fill="#5a331a"><ellipse cx="36" cy="40" rx="5" ry="4"/><ellipse cx="60" cy="38" rx="5" ry="4"/><ellipse cx="68" cy="58" rx="5" ry="4"/><ellipse cx="46" cy="62" rx="5" ry="4"/><ellipse cx="30" cy="60" rx="4" ry="3.5"/><ellipse cx="52" cy="50" rx="4" ry="3.5"/></g>'),
-      chocolate: S('<rect x="26" y="14" width="48" height="72" rx="4" fill="#6b3a1e"/><path d="M26 38h48M26 62h48M42 14v72M58 14v72" stroke="#8a5430" stroke-width="2" fill="none"/><path d="M26 62h48v20a4 4 0 0 1-4 4H30a4 4 0 0 1-4-4z" fill="#d6312b"/><path d="M26 62h48" stroke="#f3c542" stroke-width="3"/>'),
-      helado: S('<path d="M32 50h36L50 90z" fill="#e0a85a"/><path d="M38 56l22 0M42 68l14 0M34 52l16 38M66 52L50 90" stroke="#b9823a" stroke-width="2" fill="none"/><circle cx="50" cy="38" r="22" fill="#f7a8c4"/><path d="M30 46c4 8 12 8 14 2 2 6 10 8 14 0 2 6 8 6 12 0" fill="#fff" opacity=".5"/><circle cx="50" cy="14" r="5" fill="#d6312b"/>'),
-      caramelo: S('<circle cx="50" cy="50" r="19" fill="#e8445a"/><path d="M33 50L12 36v28zM67 50l21-14v28z" fill="#f08ca0"/><path d="M38 42c8-6 16-6 24 0" stroke="#fff" stroke-width="4" fill="none" opacity=".6" stroke-linecap="round"/><path d="M36 58c8 6 20 6 28 0" stroke="#fff" stroke-width="3" fill="none" opacity=".4" stroke-linecap="round"/>'),
-      cereal: box('#3b82c4', '<circle cx="42" cy="48" r="4" fill="#f0b323"/><circle cx="56" cy="46" r="4" fill="#d9822b"/><circle cx="50" cy="58" r="4" fill="#f0b323"/>'),
-      detergente: bottle('#3aa6d9', '#2d7fa8', false),
-      cloro: bottle('#e8d84a', '#4a9ad9', false),
-      shampoo: bottle('#8a63c9', '#5d3f9a', true),
-      rollon: S('<rect x="34" y="40" width="32" height="46" rx="8" fill="#5bb5c9"/><path d="M34 44c0-18 8-26 16-26s16 8 16 26z" fill="#e9eef5"/><circle cx="50" cy="16" r="6" fill="#cfd8e3"/><rect x="38" y="56" width="24" height="16" rx="3" fill="#fff" opacity=".9"/>'),
-      dental: S('<path d="M12 64h46l8 4v8l-8 4H12z" fill="#fff" stroke="#cfd8e3" stroke-width="2"/><rect x="10" y="62" width="8" height="18" rx="2" fill="#3b82c4"/><rect x="66" y="64" width="16" height="14" rx="3" fill="#3b82c4"/><rect x="24" y="68" width="30" height="6" rx="3" fill="#3b82c4" opacity=".75"/><rect x="18" y="36" width="52" height="8" rx="4" fill="#e85d8a" transform="rotate(-10 44 40)"/><rect x="62" y="22" width="22" height="12" rx="3" fill="#f5f7fa" stroke="#cfd8e3" stroke-width="1.5" transform="rotate(-10 73 28)"/>'),
-      rollo: S('<path d="M26 28v46c0 6 10 10 22 10s22-4 22-10V28z" fill="#fff" stroke="#d8dde4" stroke-width="2"/><ellipse cx="48" cy="28" rx="22" ry="8" fill="#fff" stroke="#d8dde4" stroke-width="2"/><ellipse cx="48" cy="28" rx="8" ry="3" fill="#b9a27c"/><path d="M26 44c8 4 36 4 44 0M26 58c8 4 36 4 44 0" stroke="#e5e9ee" stroke-width="2" fill="none"/>'),
-      panal: S('<path d="M10 34h80v14c0 22-18 38-40 38S10 70 10 48z" fill="#fff" stroke="#cfe0f2" stroke-width="2"/><rect x="10" y="34" width="14" height="10" rx="2" fill="#7cc3e8"/><rect x="76" y="34" width="14" height="10" rx="2" fill="#7cc3e8"/><path d="M36 58c8 8 20 8 28 0" stroke="#cfe0f2" stroke-width="3" fill="none" stroke-linecap="round"/>'),
-      basura: S('<path d="M50 10c-4 6-8 8-16 12-10 8-14 28-8 48 2 8 12 14 24 14s22-6 24-14c6-20 2-40-8-48-8-4-12-6-16-12z" fill="#394150"/><path d="M42 20c8 4 12 4 16 0" stroke="#6b7588" stroke-width="3" fill="none"/><path d="M36 36c-4 14-4 28 0 40" stroke="#fff" stroke-width="3" opacity=".18" fill="none" stroke-linecap="round"/>'),
-      mascota: bag('#6b8f3a', paw),
-      canasta: S('<path d="M30 44c0-20 8-30 20-30s20 10 20 30" fill="none" stroke="#a8743a" stroke-width="5" stroke-linecap="round"/><path d="M12 44h76l-8 40H20z" fill="#c98a4a"/><path d="M12 44h76" stroke="#a8743a" stroke-width="4"/><path d="M26 54l4 24M42 54l2 24M58 54l-2 24M74 54l-4 24M16 62h68M18 74h64" stroke="#a8743a" stroke-width="2" fill="none"/>'),
-      frutas: S('<path d="M12 58h76c0 18-14 28-38 28S12 76 12 58z" fill="#b9823a"/><circle cx="34" cy="46" r="17" fill="#d93a32"/><circle cx="62" cy="44" r="17" fill="#f5a02a"/><circle cx="48" cy="34" r="15" fill="#f2e04a"/><path d="M34 30c2-6 8-8 12-6M62 28c2-6 8-8 12-6" stroke="#3f9a45" stroke-width="4" fill="none" stroke-linecap="round"/><ellipse cx="28" cy="40" rx="4" ry="7" fill="#fff" opacity=".25"/>'),
-      congelados: box('#8fc7ee', '<path d="M50 40v24M38 52h24M41 43l18 18M59 43L41 61" stroke="#3b82c4" stroke-width="2.5" stroke-linecap="round"/>'),
-      lima: S('<ellipse cx="50" cy="56" rx="30" ry="27" fill="#7bc043"/><path d="M50 30c4-8 12-10 18-8-2 8-10 12-18 8z" fill="#3f8f2f"/><ellipse cx="38" cy="48" rx="8" ry="5" fill="#fff" opacity=".28"/><circle cx="62" cy="64" r="1.6" fill="#5a9a2e"/><circle cx="46" cy="68" r="1.6" fill="#5a9a2e"/>'),
-      coco: S('<circle cx="50" cy="54" r="32" fill="#7a5230"/><g fill="#4a2f18"><circle cx="40" cy="44" r="4"/><circle cx="58" cy="44" r="4"/><circle cx="49" cy="58" r="4"/></g><path d="M24 44c6-12 14-16 26-16" stroke="#a37a4f" stroke-width="3" fill="none" opacity=".6" stroke-linecap="round"/>'),
-      pera: S('<path d="M50 18c-10 0-12 14-16 24-6 10-10 18-4 30 6 12 38 12 44 0 6-12 2-20-4-30-4-10-6-24-20-24z" fill="#b9d04a"/><path d="M50 18c0-6 2-10 6-12" stroke="#6b4a2b" stroke-width="3.5" fill="none" stroke-linecap="round"/><path d="M54 14c6-4 12-2 14 0-4 6-10 6-14 0z" fill="#4c9a3a"/><ellipse cx="40" cy="58" rx="4" ry="9" fill="#fff" opacity=".3"/>'),
-      durazno: S('<circle cx="50" cy="56" r="31" fill="#f6a98b"/><path d="M50 26c-6 14-6 40 0 60" stroke="#e0765c" stroke-width="3" fill="none"/><ellipse cx="64" cy="50" rx="12" ry="22" fill="#f08a6a" opacity=".5"/><path d="M52 26c6-8 14-10 20-6-2 8-12 10-20 6z" fill="#4c9a3a"/>'),
-      cereza: S('<path d="M32 66c6-20 14-36 36-46M66 66c0-20 0-30 2-46" stroke="#4c7a2f" stroke-width="3" fill="none"/><circle cx="32" cy="70" r="14" fill="#c0182f"/><circle cx="66" cy="70" r="14" fill="#c0182f"/><circle cx="27" cy="65" r="3.5" fill="#fff" opacity=".35"/><circle cx="61" cy="65" r="3.5" fill="#fff" opacity=".35"/><path d="M68 20c8-4 16-2 18 2-6 6-14 4-18-2z" fill="#4c9a3a"/>'),
-      melon: S('<circle cx="50" cy="54" r="32" fill="#f0c27a"/><g stroke="#d9a050" stroke-width="2" fill="none"><path d="M26 40c14 8 34 8 48 0M22 56c16 8 40 8 56 0M26 72c14 8 34 8 48 0"/><path d="M40 26c-6 16-6 40 0 56M60 26c6 16 6 40 0 56M50 22v64"/></g>'),
-      papaya: S('<path d="M50 8C36 8 24 40 24 62c0 16 12 26 26 26s26-10 26-26C76 40 64 8 50 8z" fill="#f08a3a"/><path d="M50 22c-8 0-16 24-16 40 0 10 6 18 16 18s16-8 16-18c0-16-8-40-16-40z" fill="#f6b563"/><g fill="#2a1a1a"><circle cx="46" cy="52" r="3"/><circle cx="54" cy="56" r="3"/><circle cx="48" cy="64" r="3"/><circle cx="55" cy="68" r="3"/><circle cx="50" cy="44" r="2.6"/></g>'),
-      platano: S('<path d="M16 24C18 62 46 88 84 76c6-2 4-10-3-10C54 68 42 48 36 24c-1-6-19-6-20 0z" fill="#8cc152" stroke="#5f8f2f" stroke-width="3" stroke-linejoin="round"/><path d="M16 24c0-6 18-6 20 0" fill="#5a4a2a"/><path d="M26 34c6 22 22 34 46 38" fill="none" stroke="#fff" stroke-width="3" opacity=".3" stroke-linecap="round"/>'),
-      yuca: S('<path d="M12 30c10-8 26-8 40 2 14 10 30 28 36 48-18 2-40-8-52-22C26 46 14 40 12 30z" fill="#8a5a33"/><ellipse cx="16" cy="32" rx="5" ry="9" fill="#f3e6cf" transform="rotate(-40 16 32)"/><path d="M26 34c10 4 18 12 26 22M40 28c10 6 22 20 28 34" stroke="#6b4426" stroke-width="2" fill="none"/>'),
-      calabaza: S('<ellipse cx="50" cy="58" rx="34" ry="28" fill="#f08a24"/><path d="M50 30c-14 6-18 40 0 56M50 30c14 6 18 40 0 56M36 34c-10 10-8 40 2 50M64 34c10 10 8 40-2 50" stroke="#c96a12" stroke-width="2.4" fill="none"/><rect x="46" y="18" width="8" height="14" rx="3" fill="#5a7a2a"/>'),
-      apio: S('<path d="M40 86L36 28M52 86V24M64 86l4-58" stroke="#8fc060" stroke-width="12" stroke-linecap="round"/><path d="M52 86V24" stroke="#a5d070" stroke-width="12" stroke-linecap="round"/><g fill="#4c9a3a"><circle cx="34" cy="22" r="9"/><circle cx="52" cy="14" r="9"/><circle cx="70" cy="22" r="9"/></g><path d="M40 72V34M52 72V28M64 72l2-38" stroke="#6b9a3f" stroke-width="1.6" fill="none"/>'),
-      culantro: S('<path d="M50 90V54" stroke="#4c7a2f" stroke-width="4"/><g fill="#3f9a45"><circle cx="34" cy="40" r="11"/><circle cx="50" cy="30" r="12"/><circle cx="66" cy="40" r="11"/><circle cx="42" cy="54" r="10"/><circle cx="60" cy="54" r="10"/></g><g fill="#7ac36a"><circle cx="34" cy="38" r="5"/><circle cx="50" cy="28" r="5"/><circle cx="66" cy="38" r="5"/></g><rect x="42" y="72" width="16" height="8" rx="2" fill="#d9a04a"/>'),
-      espinaca: S('<path d="M50 88C20 70 14 40 30 22c10-10 28-10 40 0 16 18 10 48-20 66z" fill="#2f7a3a"/><path d="M50 86V26M50 60l-14-12M50 48l14-10M50 70l-12-8" stroke="#8fd08a" stroke-width="2.6" fill="none" stroke-linecap="round"/>'),
-      repollo: S('<circle cx="50" cy="54" r="34" fill="#9fd36a"/><path d="M50 20c-14 14-14 56 0 68M50 20c14 14 14 56 0 68M22 46c20-6 36-6 56 0M24 66c18 6 34 6 52 0" stroke="#6faa3f" stroke-width="2.4" fill="none"/>'),
-      coliflor: S('<path d="M20 60c4 20 20 26 30 26s26-6 30-26c-10 4-20 6-30 6s-20-2-30-6z" fill="#6fae4a"/><g fill="#f4efe0" stroke="#e0d8c0" stroke-width="2"><circle cx="34" cy="48" r="14"/><circle cx="50" cy="38" r="16"/><circle cx="66" cy="48" r="14"/><circle cx="50" cy="54" r="14"/></g>'),
-      aji: S('<path d="M24 30C42 18 74 28 84 64c-10-8-22-12-34-12-14 0-20 8-26 8-8-6-8-22 0-30z" fill="#d6312b"/><path d="M22 32c-2-8 4-14 12-14-2 6-4 10-8 14z" fill="#3f9a45"/><path d="M34 34c10-4 22-2 32 6" stroke="#fff" stroke-width="3" opacity=".3" fill="none" stroke-linecap="round"/>'),
-      remolacha: S('<path d="M50 24c-20 0-30 18-26 36 4 16 16 26 26 26s22-10 26-26c4-18-6-36-26-36z" fill="#8a1f4a"/><path d="M50 86v8" stroke="#8a1f4a" stroke-width="3"/><path d="M44 26c-6-10-4-18 0-22M50 26c0-10 2-18 4-22M56 26c6-8 10-14 16-14" stroke="#4c9a3a" stroke-width="4" fill="none" stroke-linecap="round"/><ellipse cx="38" cy="48" rx="5" ry="10" fill="#fff" opacity=".2"/>'),
-      jengibre: S('<path d="M14 58c4-12 16-14 24-10 4-14 18-18 26-8 10-6 22 2 18 14 6 8 2 20-10 20-4 10-18 12-26 4-10 6-24 0-24-10-6-2-10-6-8-10z" fill="#d9b27a"/><g stroke="#b88a50" stroke-width="2" fill="none"><path d="M24 56c8-2 14-2 20 0M48 50c8-2 14 0 18 4M36 66c8 2 14 0 20-2"/></g>'),
-      habichuela: S('<path d="M14 66C30 36 56 20 88 20" fill="none" stroke="#5aa845" stroke-width="10" stroke-linecap="round"/><path d="M12 86C34 56 60 40 88 40" fill="none" stroke="#7ac35a" stroke-width="10" stroke-linecap="round"/><path d="M12 86C34 56 60 40 88 40" fill="none" stroke="#fff" stroke-width="2" opacity=".35" stroke-linecap="round"/>'),
-      arvejas: S('<path d="M10 56c20-30 60-30 80 0-20 24-60 24-80 0z" fill="#5aa845"/><path d="M16 56c18-20 50-20 68 0-18 14-50 14-68 0z" fill="#a8d86a"/><g fill="#6ab23a"><circle cx="30" cy="56" r="7"/><circle cx="45" cy="55" r="7.5"/><circle cx="61" cy="55" r="7.5"/><circle cx="74" cy="56" r="6.5"/></g><g fill="#fff" opacity=".35"><circle cx="28" cy="53" r="2"/><circle cx="43" cy="52" r="2"/><circle cx="59" cy="52" r="2"/></g>'),
-      cebollin: S('<path d="M42 90c-4-16-4-24 0-34h16c4 10 4 18 0 34z" fill="#f4f1e6" stroke="#d9d2bc" stroke-width="2"/><path d="M42 56C34 40 30 24 26 10M50 54V8M58 56c8-16 12-32 16-46" stroke="#4c9a3a" stroke-width="7" fill="none" stroke-linecap="round"/>'),
-      molida: tray('#c4423c', '<g fill="#e07a72"><circle cx="34" cy="48" r="3"/><circle cx="50" cy="42" r="3"/><circle cx="66" cy="48" r="3"/><circle cx="42" cy="52" r="2.5"/><circle cx="58" cy="52" r="2.5"/></g>'),
-      costilla: S('<path d="M12 36c0-8 8-12 38-12s38 4 38 12v28c0 8-8 12-38 12S12 72 12 64z" fill="#b8503a"/><g stroke="#f4e6d8" stroke-width="7" stroke-linecap="round"><path d="M26 32v38M42 30v42M58 30v42M74 32v38"/></g>'),
-      pechuga: S('<path d="M16 62c0-22 22-38 46-34 18 4 26 18 20 32-8 18-30 26-48 18-12-4-18-8-18-16z" fill="#f4c4a4"/><path d="M30 56c10-10 24-14 38-10" stroke="#e8a37e" stroke-width="3" fill="none" stroke-linecap="round"/><ellipse cx="62" cy="40" rx="8" ry="4" fill="#fff" opacity=".4"/>'),
-      alitas: S('<path d="M14 62c4-22 24-36 46-30 10 4 14 10 12 18-4 14-18 24-34 24-12 0-26-4-24-12z" fill="#d9822b"/><path d="M60 34c8-6 18-4 22 4" stroke="#d9822b" stroke-width="9" stroke-linecap="round" fill="none"/><circle cx="86" cy="40" r="5" fill="#f7f1e3"/><path d="M26 56c8-8 20-10 30-6" stroke="#f0b060" stroke-width="3" fill="none" stroke-linecap="round"/>'),
-      chuleta: S('<path d="M14 50c0-18 18-30 40-28 20 2 32 14 30 30-2 18-18 28-38 26-22-2-32-14-32-28z" fill="#e8a09a"/><path d="M18 52c0-14 14-24 32-22" stroke="#fbd9d4" stroke-width="5" fill="none" stroke-linecap="round"/><circle cx="64" cy="54" r="10" fill="#f7efe4"/><circle cx="64" cy="54" r="4" fill="#e3d4c0"/>'),
-      salmon: S('<path d="M10 52c14-18 34-24 52-18 14 4 22 12 28 22-6 14-22 24-42 24-18 0-34-10-38-28z" fill="#f08a6a"/><g stroke="#fbd0c0" stroke-width="3" fill="none" stroke-linecap="round"><path d="M24 50c10-6 24-8 38-4M26 62c12-4 28-4 40 0M34 40c8-2 16-2 22 0"/></g><path d="M10 52c14-18 34-24 52-18" fill="none" stroke="#c9604a" stroke-width="3" stroke-linecap="round"/>'),
-      atun: canD('#3b6fb0', '#eaf2fa', fishDeco),
-      sardina: S('<rect x="12" y="34" width="76" height="38" rx="9" fill="#c9d1da"/><rect x="18" y="40" width="64" height="26" rx="6" fill="#2f4358"/><g fill="#a9bfd4"><ellipse cx="38" cy="53" rx="13" ry="5"/><ellipse cx="62" cy="53" rx="13" ry="5"/></g><g fill="#2f4358"><path d="M50 53l7-5v10zM74 53l7-5v10z"/></g><circle cx="86" cy="53" r="3" fill="#aeb8c4"/>'),
-      crema: S('<rect x="38" y="10" width="24" height="10" rx="3" fill="#cfd8e3"/><path d="M34 20h32l4 12v52H30V32z" fill="#fff" stroke="#d5dbe3" stroke-width="2"/><rect x="30" y="46" width="40" height="20" fill="#f4c3d0"/><circle cx="50" cy="56" r="6" fill="#fff"/>'),
-      condensada: canD('#f4f7fb', '#2f7fd0', drop),
-      polvo: S('<rect x="30" y="22" width="40" height="62" rx="5" fill="#2f7fd0"/><rect x="28" y="12" width="44" height="14" rx="4" fill="#f4f6f9"/><rect x="30" y="40" width="40" height="24" fill="#fff"/><path d="M50 44c-4 5-6 7-6 10a6 6 0 0 0 12 0c0-3-2-5-6-10z" fill="#2f7fd0"/>'),
-      panmolde: S('<path d="M16 42c0-12 10-18 34-18s34 6 34 18v36c0 4-3 6-6 6H22c-3 0-6-2-6-6z" fill="#e2b273"/><rect x="22" y="42" width="56" height="40" rx="3" fill="#f5e3bf"/><path d="M34 42v40M46 42v40M58 42v40M70 42v40" stroke="#e0c690" stroke-width="2"/>'),
-      tortilla: S('<ellipse cx="50" cy="66" rx="38" ry="12" fill="#d9b070"/><ellipse cx="50" cy="60" rx="38" ry="12" fill="#e8c88a"/><ellipse cx="50" cy="54" rx="38" ry="12" fill="#f3dba6"/><g fill="#d9a85a"><circle cx="36" cy="54" r="2"/><circle cx="52" cy="50" r="2"/><circle cx="64" cy="56" r="2"/></g>'),
-      dona: S('<circle cx="50" cy="54" r="34" fill="#e0a24a"/><path d="M18 52c0-20 14-30 32-30s32 10 32 30c0 6-6 8-8 4-4 6-10 4-12 0-4 6-12 6-14 0-4 6-12 4-14 0-4 4-16 4-16-4z" fill="#f08cb0"/><circle cx="50" cy="54" r="11" fill="#f4f2ec"/><g fill="#fff"><rect x="30" y="38" width="6" height="2.4" rx="1" transform="rotate(30 33 39)"/><rect x="58" y="36" width="6" height="2.4" rx="1" transform="rotate(-20 61 37)"/><rect x="66" y="52" width="6" height="2.4" rx="1" transform="rotate(60 69 53)"/><rect x="40" y="68" width="6" height="2.4" rx="1"/></g>'),
-      torta: S('<rect x="20" y="52" width="60" height="30" rx="4" fill="#d9a05b"/><rect x="20" y="44" width="60" height="12" rx="4" fill="#fff4e6"/><rect x="26" y="30" width="48" height="16" rx="4" fill="#f08cb0"/><circle cx="50" cy="24" r="6" fill="#d6312b"/><path d="M50 18c0-4 2-6 4-8" stroke="#4c9a3a" stroke-width="2.5" fill="none"/>'),
-      ketchup: squeeze('#d6312b', '#f5f5f5', '<path d="M50 52c-5 5-7 8-7 12a7 7 0 0 0 14 0c0-4-2-7-7-12z" fill="#d6312b"/>'),
-      mostaza: squeeze('#f2c230', '#e0a823', '<path d="M38 60c5-5 9-5 12 0s8 5 12 0" stroke="#f2c230" stroke-width="3.5" fill="none" stroke-linecap="round"/>'),
-      mayonesa: jar('#f6f2e6', '#2f7fd0', '<ellipse cx="50" cy="62" rx="13" ry="9" fill="#fff"/><ellipse cx="50" cy="62" rx="7" ry="4" fill="#f2e6a8"/>'),
-      mermelada: jar('#7b3f8a', '#d6312b', '<circle cx="50" cy="62" r="9" fill="#e8445a"/><path d="M50 54c0-4 2-6 4-6" stroke="#3f9a45" stroke-width="2.4" fill="none"/>'),
-      miel: jar('#e0a21f', '#8a5a2b', '<path d="M50 52l7 4v8l-7 4-7-4v-8z" fill="#fff" opacity=".85"/>'),
-      manibutter: jar('#c98a4a', '#d6312b', '<g fill="#f3e6cf"><ellipse cx="44" cy="62" rx="7" ry="4.5" transform="rotate(-20 44 62)"/><ellipse cx="57" cy="62" rx="7" ry="4.5" transform="rotate(20 57 62)"/></g>'),
-      aceitunas: jar('#9aa84a', '#2f6f3a', '<g fill="#5d7a2a"><circle cx="42" cy="58" r="5.5"/><circle cx="56" cy="56" r="5.5"/><circle cx="50" cy="68" r="5.5"/></g><g fill="#d6312b"><circle cx="42" cy="58" r="1.8"/><circle cx="56" cy="56" r="1.8"/><circle cx="50" cy="68" r="1.8"/></g>'),
-      vinagre: S('<rect x="44" y="8" width="12" height="12" rx="2" fill="#7a3b3b"/><path d="M40 20h20l8 12v50c0 4-3 6-6 6H38c-3 0-6-2-6-6V32z" fill="#f2e1c8" stroke="#dcc3a0" stroke-width="2"/><rect x="34" y="48" width="32" height="22" fill="#fff" opacity=".9"/><circle cx="50" cy="59" r="6" fill="#a8482f"/>'),
-      pimienta: shaker('#2b2b2b', '#4a4a4a'),
-      condimento: shaker('#d9822b', '#8a4b12'),
-      picante: S('<rect x="44" y="12" width="12" height="10" rx="2" fill="#2b2b2b"/><path d="M40 22h20l6 10v48c0 4-3 6-6 6H40c-3 0-6-2-6-6V32z" fill="#d6312b"/><rect x="36" y="46" width="28" height="22" rx="2" fill="#fbe9a0"/><path d="M50 50c4 4 5 7 3 10-1 3-5 3-6 0-2-3 0-6 3-10z" fill="#d6312b"/>'),
-      soya: S('<rect x="44" y="8" width="12" height="12" rx="2" fill="#d6312b"/><path d="M40 20h20l8 14v48c0 4-3 6-6 6H38c-3 0-6-2-6-6V34z" fill="#2f1f17"/><rect x="35" y="50" width="30" height="20" fill="#f3ecda"/><circle cx="50" cy="60" r="5" fill="#2f1f17"/>'),
-      sopainst: S('<path d="M26 34h48l-6 50H32z" fill="#e8553d"/><path d="M26 34h48v10H26z" fill="#f4f6f9"/><rect x="30" y="52" width="40" height="16" fill="#fff" opacity=".9"/><path d="M36 30c4-6 8-6 12 0M52 30c4-6 8-6 12 0" stroke="#d9a04a" stroke-width="3" fill="none" stroke-linecap="round"/>'),
-      avena: S('<rect x="30" y="20" width="40" height="64" rx="6" fill="#d9a04a"/><rect x="28" y="12" width="44" height="12" rx="4" fill="#8a5a2b"/><rect x="30" y="40" width="40" height="26" fill="#fff" opacity=".9"/><path d="M50 62V46M50 52l-6-5M50 52l6-5M50 58l-6-5M50 58l6-5" stroke="#d9a04a" stroke-width="2" fill="none" stroke-linecap="round"/>'),
-      mani: S('<g fill="#d9a85a" stroke="#b9823a" stroke-width="2"><path d="M14 44c-4-10 6-18 14-12 4 2 6 4 10 4s8-4 12-4c10 0 14 12 6 18-4 3-8 1-12 0-4-1-6-1-10 0-6 2-16 2-20-6z" transform="translate(4 -4)"/><path d="M14 44c-4-10 6-18 14-12 4 2 6 4 10 4s8-4 12-4c10 0 14 12 6 18-4 3-8 1-12 0-4-1-6-1-10 0-6 2-16 2-20-6z" transform="translate(16 26) rotate(8 40 40)"/></g><g fill="#b9823a"><circle cx="36" cy="36" r="1.6"/><circle cx="48" cy="38" r="1.6"/><circle cx="52" cy="66" r="1.6"/><circle cx="64" cy="64" r="1.6"/></g>'),
-      palomitas: S('<g fill="#fff4cf" stroke="#e8d79a" stroke-width="1.5"><circle cx="34" cy="38" r="9"/><circle cx="48" cy="30" r="10"/><circle cx="62" cy="36" r="9"/><circle cx="72" cy="46" r="8"/><circle cx="28" cy="48" r="8"/><circle cx="50" cy="44" r="9"/></g><path d="M24 48h52l-6 38H30z" fill="#fff" stroke="#e5e9ee" stroke-width="1.5"/><path d="M30 48h8l1 38h-7zM46 48h8v38h-8zM62 48h8l-3 38h-6z" fill="#d6312b"/>'),
-      barra: S('<rect x="12" y="38" width="76" height="26" rx="6" fill="#c98a4a"/><path d="M12 38h10v26H12zM78 38h10v26H78z" fill="#a8682a"/><rect x="28" y="44" width="44" height="14" rx="3" fill="#f3e6cf"/><g fill="#c98a4a"><circle cx="38" cy="51" r="2"/><circle cx="50" cy="51" r="2"/><circle cx="62" cy="51" r="2"/></g>'),
-      gelatina: S('<path d="M26 40h48l-6 42H32z" fill="#e8445a" opacity=".92"/><ellipse cx="50" cy="40" rx="24" ry="6" fill="#f4768a"/><ellipse cx="42" cy="58" rx="4" ry="9" fill="#fff" opacity=".3"/><circle cx="50" cy="30" r="5" fill="#d6312b"/>'),
-      pizza: S('<path d="M50 88L14 26c22-14 50-14 72 0z" fill="#f2c442"/><path d="M14 26c22-14 50-14 72 0" fill="none" stroke="#d9852a" stroke-width="6"/><g fill="#c4322b"><circle cx="40" cy="38" r="6"/><circle cx="60" cy="40" r="6"/><circle cx="50" cy="58" r="6"/></g><g fill="#4c9a3a"><circle cx="52" cy="40" r="2"/><circle cx="42" cy="52" r="2"/></g>'),
-      nuggets: S('<g fill="#d9a04a"><path d="M14 44c0-12 12-16 22-14 10 2 14 10 10 20-4 10-18 12-26 6-4-3-6-7-6-12z"/><path d="M52 34c0-10 12-14 22-10 10 4 12 16 4 22-8 6-20 4-24-4-2-3-2-6-2-8z"/><path d="M34 68c0-10 10-14 20-12 10 2 14 12 8 20-6 8-20 6-26 0-2-3-2-6-2-8z"/></g><g fill="#f0c27a" opacity=".7"><circle cx="28" cy="40" r="2"/><circle cx="62" cy="34" r="2"/><circle cx="46" cy="66" r="2"/></g>'),
-      vegcong: S('<path d="M24 14h52l4 8-2 62H22l-2-62z" fill="#9ed0ee"/><rect x="30" y="34" width="40" height="34" rx="6" fill="#fff" opacity=".92"/><g fill="#5aa845"><circle cx="40" cy="48" r="4"/><circle cx="50" cy="44" r="4"/><circle cx="58" cy="50" r="4"/></g><g fill="#f08a24"><rect x="42" y="54" width="6" height="6" rx="1"/><rect x="54" y="58" width="6" height="6" rx="1"/></g>'),
-      hielo: S('<g fill="#bfe6f7" stroke="#8cc4e6" stroke-width="2"><rect x="16" y="46" width="32" height="32" rx="6"/><rect x="48" y="40" width="34" height="34" rx="6" transform="rotate(8 65 57)"/><rect x="34" y="20" width="30" height="30" rx="6" transform="rotate(-10 49 35)"/></g><g stroke="#fff" stroke-width="3" opacity=".7" stroke-linecap="round"><path d="M22 54l8-4M54 48l8-4M40 28l8-3"/></g>'),
-      cola: S('<rect x="44" y="6" width="12" height="6" rx="2" fill="#d6312b"/><path d="M44 12h12v14c0 8 14 16 14 32v22c0 4-3 6-6 6H36c-3 0-6-2-6-6V58c0-16 14-24 14-32z" fill="#3a1d12"/><path d="M30 58h40v14H30z" fill="#d6312b"/><path d="M34 65c6-4 10-4 16 0s10 4 16 0" stroke="#fff" stroke-width="2.4" fill="none"/>'),
-      whisky: S('<rect x="42" y="8" width="16" height="10" rx="2" fill="#2b2b2b"/><path d="M38 18h24l4 10v54c0 4-3 6-6 6H40c-3 0-6-2-6-6V28z" fill="#b8741f"/><rect x="36" y="46" width="28" height="24" fill="#f3ecda"/><circle cx="50" cy="58" r="5" fill="#b8741f"/>'),
-      suavizante: jug('#f08ca0', '<path d="M50 52c-6 4-6 12 0 14 6-2 6-10 0-14z" fill="#f08ca0"/>'),
-      lavaplatos: squeeze('#6bc24a', '#2f7a3a', '<circle cx="44" cy="62" r="6" fill="#e2f4c8"/><circle cx="58" cy="58" r="4" fill="#e2f4c8"/><circle cx="56" cy="68" r="3" fill="#e2f4c8"/>'),
-      esponja: S('<rect x="16" y="34" width="68" height="34" rx="5" fill="#f2d03a"/><rect x="16" y="54" width="68" height="14" rx="4" fill="#4c9a3a"/><g fill="#d9b020"><circle cx="30" cy="42" r="3"/><circle cx="48" cy="46" r="3"/><circle cx="66" cy="40" r="3"/><circle cx="74" cy="48" r="2"/></g>'),
-      spray: spray('#4ac0b0'),
-      aerosol: aerosol('#3b82c4'),
-      toalla: S('<rect x="30" y="16" width="40" height="66" rx="5" fill="#fff" stroke="#d8dde4" stroke-width="2"/><ellipse cx="50" cy="16" rx="20" ry="6" fill="#fff" stroke="#d8dde4" stroke-width="2"/><ellipse cx="50" cy="16" rx="6" ry="2" fill="#b9a27c"/><path d="M30 40h40M30 54h40M30 68h40" stroke="#e5e9ee" stroke-width="2"/><g fill="#7cc3e8"><circle cx="40" cy="47" r="2"/><circle cx="60" cy="47" r="2"/><circle cx="50" cy="61" r="2"/></g>'),
-      aluminio: S('<rect x="12" y="38" width="76" height="30" rx="5" fill="#d0d7df"/><ellipse cx="14" cy="53" rx="6" ry="15" fill="#e8edf2"/><rect x="30" y="40" width="40" height="26" fill="#3b82c4" opacity=".9"/><rect x="38" y="48" width="24" height="10" fill="#fff"/><path d="M20 44h8M20 53h8M20 62h8M72 44h8M72 53h8M72 62h8" stroke="#fff" stroke-width="2" opacity=".6"/>'),
-      servilleta: S('<rect x="22" y="34" width="56" height="48" rx="3" fill="#fbe9ee"/><g transform="rotate(-6 50 50)"><rect x="26" y="26" width="52" height="48" rx="3" fill="#fff" stroke="#e7d3d9" stroke-width="2"/><path d="M34 42h30M34 52h30" stroke="#f08ca0" stroke-width="3" stroke-linecap="round"/></g>'),
-      pilas: S('<rect x="26" y="26" width="22" height="58" rx="4" fill="#2b2b2b"/><rect x="32" y="20" width="10" height="8" rx="2" fill="#cfd8e3"/><rect x="26" y="44" width="22" height="22" fill="#f2c230"/><rect x="52" y="26" width="22" height="58" rx="4" fill="#2b2b2b"/><rect x="58" y="20" width="10" height="8" rx="2" fill="#cfd8e3"/><rect x="52" y="44" width="22" height="22" fill="#f2c230"/>'),
-      bombillo: S('<path d="M50 10c-18 0-28 14-28 28 0 12 8 18 12 26v6h32v-6c4-8 12-14 12-26 0-14-10-28-28-28z" fill="#fff3a8" stroke="#e8d57a" stroke-width="2"/><rect x="36" y="70" width="28" height="16" rx="3" fill="#aab4c0"/><path d="M36 76h28M36 82h28" stroke="#8793a1" stroke-width="2"/><path d="M42 40c4 6 12 6 16 0M50 40v26" stroke="#e0a823" stroke-width="2.4" fill="none"/>'),
-      jabon: S('<rect x="14" y="36" width="72" height="34" rx="12" fill="#7cc3e8"/><rect x="14" y="36" width="72" height="14" rx="10" fill="#a9dcf2"/><circle cx="76" cy="26" r="8" fill="#fff" stroke="#cfe9f7" stroke-width="2"/><circle cx="86" cy="16" r="5" fill="#fff" stroke="#cfe9f7" stroke-width="2"/>'),
-      acond: bottle('#3fb0a0', '#2a7a6e', true),
-      cepillo: S('<g transform="rotate(-18 50 55)"><rect x="8" y="50" width="62" height="10" rx="5" fill="#3b82c4"/><rect x="62" y="44" width="28" height="22" rx="5" fill="#f4f6f9" stroke="#cfd8e3" stroke-width="1.5"/><g stroke="#e85d8a" stroke-width="3.2" stroke-linecap="round"><path d="M68 44v-8M74 44v-8M80 44v-8M86 44v-8"/></g></g>'),
-      enjuague: S('<rect x="40" y="8" width="20" height="16" rx="3" fill="#2f9fd0"/><path d="M36 24h28c6 6 8 12 8 24v34c0 4-3 6-7 6H35c-4 0-7-2-7-6V48c0-12 2-18 8-24z" fill="#3fc6c0"/><rect x="34" y="50" width="32" height="22" rx="3" fill="#fff" opacity=".9"/><path d="M36 61c5-4 9-4 14 0s9 4 14 0" stroke="#3fc6c0" stroke-width="2.4" fill="none"/>'),
-      afeitadora: S('<rect x="42" y="36" width="12" height="52" rx="6" fill="#3b82c4"/><path d="M26 12h40l4 10H22z" fill="#cfd8e3"/><rect x="26" y="22" width="40" height="14" rx="3" fill="#e85d8a"/><path d="M30 28h32" stroke="#fff" stroke-width="2.4"/>'),
-      toallasan: S('<rect x="20" y="22" width="60" height="60" rx="8" fill="#f08ca0"/><circle cx="50" cy="52" r="18" fill="#fff" opacity=".92"/><g fill="#f08ca0"><circle cx="50" cy="44" r="5.5"/><circle cx="58" cy="52" r="5.5"/><circle cx="50" cy="60" r="5.5"/><circle cx="42" cy="52" r="5.5"/></g><circle cx="50" cy="52" r="4" fill="#f2c230"/>'),
-      protector: tube('#f39a2a', '#2b2b2b', '<circle cx="50" cy="49" r="6" fill="#f2c230"/>'),
-      crema_corp: S('<rect x="22" y="30" width="56" height="12" rx="4" fill="#d6a0c0"/><path d="M20 42h60v32c0 6-4 10-10 10H30c-6 0-10-4-10-10z" fill="#f6e3ee"/><rect x="28" y="50" width="44" height="22" rx="3" fill="#fff"/><path d="M50 53c-6 4-6 12 0 14 6-2 6-10 0-14z" fill="#d6a0c0"/>'),
-      algodon: S('<g fill="#fff" stroke="#e5e9ee" stroke-width="2"><circle cx="36" cy="58" r="14"/><circle cx="58" cy="54" r="15"/><circle cx="48" cy="38" r="13"/><circle cx="68" cy="70" r="10"/><circle cx="30" cy="74" r="9"/></g>'),
-      perfume: S('<rect x="40" y="8" width="20" height="14" rx="3" fill="#d9a63a"/><rect x="46" y="22" width="8" height="6" fill="#b9823a"/><rect x="24" y="28" width="52" height="56" rx="10" fill="#e8b4d8" stroke="#c98ab8" stroke-width="2"/><rect x="34" y="46" width="32" height="20" rx="3" fill="#fff" opacity=".85"/><path d="M30 38c6-6 14-6 20 0" stroke="#fff" stroke-width="3" opacity=".5" fill="none"/>'),
-      perro: bag('#8a5a2b', '<rect x="38" y="57" width="24" height="7" rx="3.5" fill="#fff"/><circle cx="38" cy="56" r="4" fill="#fff"/><circle cx="38" cy="65" r="4" fill="#fff"/><circle cx="62" cy="56" r="4" fill="#fff"/><circle cx="62" cy="65" r="4" fill="#fff"/>'),
-      gato: canD('#9a6fc4', '#f3ecfa', '<circle cx="50" cy="52" r="11" fill="#9a6fc4"/><path d="M41 46l-3-10 10 6zM59 46l3-10-10 6z" fill="#9a6fc4"/><circle cx="46" cy="51" r="2" fill="#fff"/><circle cx="54" cy="51" r="2" fill="#fff"/>')
-    };
-    OBJ.__gen = gen;
-    return OBJ;
-  })();
-  var ART_RULES = [
-    ["papel higienico", "rollo"], ["papel toalla|toalla de papel|toallas de papel", "toalla"], ["papel aluminio|aluminio", "aluminio"], ["servilleta", "servilleta"],
-    ["crema dental|pasta dental|colgate", "dental"], ["cepillo dental|cepillo de dientes|cepillo", "cepillo"], ["enjuague bucal|enjuague", "enjuague"],
-    ["crema corporal|crema de manos|crema facial|locion|hidratante", "crema_corp"],
-    ["pringles", "pringles"], ["papas fritas|papitas|doritos|cheetos|tostitos|nachos|snack|chips|platanito", "snack"],
-    ["mantequilla de mani|crema de mani", "manibutter"], ["palomita|popcorn", "palomitas"], ["mani|cacahuate|nuez|almendra", "mani"], ["barra de cereal|barra", "barra"], ["gelatina|flan|pudin", "gelatina"],
-    ["salsa de tomate|ketchup|catsup", "ketchup"], ["mostaza", "mostaza"], ["mayonesa", "mayonesa"], ["mermelada|jalea", "mermelada"], ["miel", "miel"], ["aceituna", "aceitunas"], ["vinagre", "vinagre"], ["pimienta", "pimienta"],
-    ["sazon|condimento|adobo|especia|oregano|comino|curry", "condimento"], ["salsa picante|picante|tabasco", "picante"], ["salsa de soya|soya|salsa inglesa", "soya"], ["sopa instantanea|sopa|ramen|noodle", "sopainst"], ["avena|granola", "avena"],
-    ["atun", "atun"], ["sardina", "sardina"], ["leche condensada|condensada|leche evaporada|evaporada", "condensada"], ["leche en polvo", "polvo"],
-    ["salsa|caldo|enlatado|lata|conserva|aderezo|pure", "lata"],
-    ["helado", "helado"], ["chocolate|cacao", "chocolate"], ["galleta|oreo", "galleta"], ["caramelo|dulce|gomita|chicle|bombon|paleta", "caramelo"], ["cereal", "cereal"],
-    ["pizza", "pizza"], ["nugget|empanizado", "nuggets"], ["vegetales congelados|congelado|congelada", "vegcong"], ["hielo", "hielo"],
-    ["jugo|nectar", "jugo"], ["agua", "agua"], ["cerveza", "cerveza"], ["vino", "vino"], ["ron|whisky|vodka|licor|ginebra|tequila|aguardiente", "whisky"], ["coca|pepsi|cola|malta", "cola"], ["refresco|gaseosa|soda|sprite|fanta|energizante", "soda"], ["cafe", "cafe"], ["te|manzanilla|infusion", "te"],
-    ["leche", "leche"], ["queso", "queso"], ["crema", "crema"], ["yogurt|yogur", "yogurt"], ["mantequilla|margarina", "mantequilla"], ["huevo", "huevo"],
-    ["pechuga", "pechuga"], ["alita", "alitas"], ["pollo|muslo|gallina", "pollo"], ["tocino|bacon", "tocino"], ["jamon", "jamon"], ["salchicha|chorizo|mortadela|salami", "salchicha"],
-    ["molida", "molida"], ["costilla", "costilla"], ["chuleta|cerdo", "chuleta"], ["carne|res|bistec|lomo", "carne"], ["camaron|langostino|marisco", "camaron"], ["salmon", "salmon"], ["pescado|tilapia|corvina|filete", "pescado"],
-    ["croissant", "croissant"], ["pan de molde|pan molde|pan sandwich", "panmolde"], ["dona|donut|rosquilla", "dona"], ["torta|pastel|bizcocho|queque", "torta"], ["tortilla|pita", "tortilla"], ["pan|baguette|tostada|bollo", "pan"],
-    ["arroz", "arroz"], ["pasta|espagueti|spaghetti|macarron|fideo|tallarin", "pasta"], ["frijol|lenteja|garbanzo|poroto", "frijol"], ["aceite|oliva", "aceite"], ["sal", "sal"], ["azucar|splenda|endulzante", "azucar"], ["harina|maicena", "harina"],
-    ["bolsa basura|bolsas de basura|basura", "basura"], ["suavizante", "suavizante"], ["lavaplatos|lavavajillas|lava platos|jabon de platos", "lavaplatos"], ["esponja|estropajo", "esponja"],
-    ["limpiavidrios|limpia vidrios|limpiador|multiusos|desengrasante", "spray"], ["aerosol|insecticida|raid|ambientador|lysol|desinfectante", "aerosol"],
-    ["detergente|jabon liquido|jabon en polvo|lavanderia", "detergente"], ["cloro|lavandina|blanqueador", "cloro"], ["pila|bateria", "pilas"], ["bombillo|foco|bombilla", "bombillo"],
-    ["jabon", "jabon"], ["shampoo|champu", "shampoo"], ["acondicionador", "acond"], ["desodorante", "rollon"], ["afeitadora|rastrillo|cuchilla|maquinilla", "afeitadora"],
-    ["toalla sanitaria|tampon|protector diario", "toallasan"], ["panal|toallita", "panal"], ["protector solar|bloqueador|protector", "protector"], ["algodon|cotonete|hisopo", "algodon"], ["perfume|colonia|fragancia", "perfume"],
-    ["gato|gatito|felino", "gato"], ["perro|cachorro|canino", "perro"], ["croqueta|mascota|concentrado", "mascota"],
-    ["manzana", "manzana"], ["banano|guineo|banana", "banano"], ["platano", "platano"], ["naranja|mandarina", "naranja"], ["limon", "limon"], ["lima", "lima"], ["fresa", "fresa"], ["uva", "uva"], ["sandia", "sandia"], ["melon", "melon"], ["papaya", "papaya"], ["pina", "pina"], ["mango", "mango"], ["aguacate", "aguacate"],
-    ["coco", "coco"], ["pera", "pera"], ["durazno|melocoton", "durazno"], ["cereza", "cereza"],
-    ["tomate", "tomate"], ["cebollin|cebolleta", "cebollin"], ["cebolla", "cebolla"], ["ajo", "ajo"], ["zanahoria", "zanahoria"], ["papa|patata", "papa"], ["yuca|name|otoe", "yuca"], ["calabaza|zapallo", "calabaza"], ["pepino|zucchini|calabacin", "pepino"],
-    ["lechuga|ensalada", "lechuga"], ["repollo", "repollo"], ["espinaca|acelga", "espinaca"], ["culantro|cilantro|perejil|hierbabuena|albahaca", "culantro"], ["apio", "apio"], ["pimenton", "pimenton"], ["aji|chile", "aji"],
-    ["berenjena", "berenjena"], ["maiz|elote", "maiz"], ["brocoli", "brocoli"], ["coliflor", "coliflor"], ["remolacha", "remolacha"], ["jengibre", "jengibre"], ["habichuela|ejote", "habichuela"], ["arveja|guisante|chicharo", "arvejas"], ["hongo|champinon", "hongo"]
-  ];
-  var artRulesReady = null;
-  function artFor(text, category, seed) {
-    if (!artRulesReady) artRulesReady = ART_RULES.map(function (r) { return [r[0].split("|").map(function (k) { return pkey(k); }), r[1]]; });
-    var padded = " " + pkey(text) + " ";
-    for (var i = 0; i < artRulesReady.length; i++) {
-      var kws = artRulesReady[i][0];
-      for (var j = 0; j < kws.length; j++) if (padded.indexOf(" " + kws[j] + " ") >= 0 && ART[artRulesReady[i][1]]) return { id: artRulesReady[i][1], svg: ART[artRulesReady[i][1]] };
-    }
-    return ART.__gen(pkey(seed || text), category);
-  }
-  function timgHtml(art, shift) { return '<span class="timg"' + (shift ? ' style="filter:hue-rotate(' + shift + 'deg)"' : '') + '>' + (art && art.svg ? art.svg : ART.canasta) + '</span>'; }
-  function allStats() {
-    var g = {};
-    state.purchases.forEach(function (p) {
-      p.items.forEach(function (it, idx) {
-        var label = (it.generic || it.name || "Sin nombre").trim(), k = pkey(label);
-        var qty = Number(it.qty) || 0, amount = Number(it.amount) || 0;
-        if (!qty) return;
-        if (!g[k]) g[k] = { key: k, labels: {}, cats: {}, specifics: {}, occ: [] };
-        var spec = (it.name || "").trim(); if (spec) g[k].specifics[spec] = 1;
-        var cat = CATS.indexOf(it.category) >= 0 ? it.category : "Otros"; g[k].cats[cat] = (g[k].cats[cat] || 0) + 1;
-        g[k].labels[label] = (g[k].labels[label] || 0) + 1;
-        var price = r2(amount / qty);
-        g[k].occ.push({ pid: p.id, idx: idx, date: p.date, store: p.store, payment: p.payment, qty: qty, unit: it.unit || "", amount: r2(amount), price: price, name: (it.name || it.generic || "").trim(), perKgTxt: perKgText(price, it.sizeQty, it.sizeUnit, it.unit) });
-      });
-    });
-    return Object.keys(g).map(function (k) {
-      var x = g[k];
-      x.name = Object.keys(x.labels).sort(function (a, b) { return a.length - b.length || x.labels[b] - x.labels[a]; })[0];
-      x.occ.sort(function (a, b) { return b.date.localeCompare(a.date); });
-      x.min = Math.min.apply(null, x.occ.map(function (o) { return o.price; }));
-      x.max = Math.max.apply(null, x.occ.map(function (o) { return o.price; }));
-      x.count = x.occ.length;
-      x.category = Object.keys(x.cats).sort(function (a, b) { return x.cats[b] - x.cats[a]; })[0] || "Otros";
-      x.art = artFor(x.name + " " + Object.keys(x.specifics).join(" "), x.category, x.name);
-      return x;
-    });
-  }
-
-  function viewPrecios() {
-    if (!state.purchases.length) {
-      return '<div class="card empty"><div class="big">🏷️</div><h2>Aún no hay precios que comparar</h2><p class="sub">Cuando agregues compras, aquí verás el precio unitario de cada producto a lo largo del tiempo.</p></div>';
-    }
-    var q = norm(state.priceQuery);
-    var cmp = function (a, b) { return a.localeCompare(b, "es", { sensitivity: "base" }); };
-    var all = allStats(), used = {};
-    all.slice().sort(function (a, b) { return cmp(a.category, b.category) || cmp(a.name, b.name); }).forEach(function (x) { var n = used[x.art.id] || 0; used[x.art.id] = n + 1; x.shift = n ? (n * 60) % 360 : 0; });
-    var stats = all.filter(function (x) { return !q || norm(x.name).indexOf(q) >= 0; });
-    var html = '<div class="card"><h2>Comparar precios</h2><p class="sub">Precio por unidad (o por kg/lb) de cada producto, compra por compra.</p>' +
-      '<input class="search" id="pq" value="' + esc(state.priceQuery) + '" placeholder="Buscar producto…" aria-label="Buscar producto"></div>';
-    if (!stats.length) return html + '<div class="card"><p class="sub" style="margin:0">No encontré productos con ese nombre.</p></div>';
-    var byCat = {};
-    stats.forEach(function (x) { (byCat[x.category] = byCat[x.category] || []).push(x); });
-    Object.keys(byCat).sort(cmp).forEach(function (cat) {
-      var list = byCat[cat].sort(function (a, b) { return cmp(a.name, b.name); });
-      var collapsed = !q && state.pcols[cat];
-      html += '<div class="card"><button class="cathead" data-act="pcat" data-k="' + esc(cat) + '" aria-expanded="' + !collapsed + '"><span class="chev"></span><b>' + esc(cat) + '</b><span class="small">' + list.length + '</span></button>';
-      if (!collapsed) html += '<div class="tiles">' + list.map(function (x) {
-        return '<button class="tile" data-act="pcmp" data-k="' + esc(x.key) + '" aria-pressed="' + (state.pcmp === x.key) + '">' + timgHtml(x.art, x.shift) + '<span class="tname">' + esc(x.name) + '</span></button>';
-      }).join("") + '</div>';
-      html += '</div>';
-    });
-    var sel = state.pcmp ? all.filter(function (x) { return x.key === state.pcmp; })[0] : null;
-    if (sel) {
-      html += '<div class="sheetwrap" data-act="pclose"><div class="sheet" data-act="noop" role="dialog" aria-label="' + esc(sel.name) + '"><div class="sheethead">' + timgHtml(sel.art, sel.shift) + '<h2>' + esc(sel.name) + '</h2><button class="icon" data-act="pclose" aria-label="Cerrar" style="width:44px">✕</button></div>' +
-        '<p class="small" style="margin:0 0 10px">' + sel.count + (sel.count === 1 ? ' compra' : ' compras') + (sel.count > 1 ? ' · desde ' + money(sel.min) + ' hasta ' + money(sel.max) : '') + '</p>' +
-        sel.occ.map(function (o) {
-          var cls = sel.count > 1 ? (o.price === sel.min ? " best" : (o.price === sel.max ? " worst" : "")) : "";
-          return '<button class="pricebox' + cls + '" data-act="open" data-rt="precios" data-id="' + esc(o.pid) + '" data-idx="' + o.idx + '"><div class="up"><span>' + esc(o.name || sel.name) + ' · ' + fdateShort(o.date) + ' · ' + esc(o.store) + '</span><b>' + money(o.price) + ' x ' + esc(o.unit || "unidad") + (o.perKgTxt ? ' <span class="small">(' + esc(o.perKgTxt) + ')</span>' : '') + '</b></div>' +
-            '<div class="small">' + o.qty + ' ' + esc(o.unit || "unidad") + (o.qty !== 1 ? "s" : "") + ' · total ' + money(o.amount) + (o.payment ? ' · ' + esc(o.payment) : '') + '</div></button>';
-        }).join("") + '</div></div>';
-    }
-    return html;
-  }
-
-  function render() {
-    document.querySelectorAll(".nav button").forEach(function (b) { b.setAttribute("aria-current", b.dataset.tab === state.tab ? "page" : "false"); });
-    var html;
-    if (state.draft) html = viewDraft();
-    else if (state.tab === "escanear") html = viewEscanear();
-    else if (state.tab === "historial") html = viewHistorial();
-    else if (state.tab === "precios") html = viewPrecios();
-    else html = viewResumen();
-    $("#main").innerHTML = html;
-    if (state.draft) updateTotals();
-    var onPrecios = state.tab === "precios" && !state.draft;
-    document.body.style.overflow = onPrecios && state.pcmp ? "hidden" : "";
-  }
-
-  // ---------- Acciones ----------
-  function toCSV() {
-    var rows = [["fecha","tienda","metodo_pago","producto","articulo","cantidad","categoria","monto"]];
-    state.purchases.slice().sort(function (a, b) { return a.date.localeCompare(b.date); }).forEach(function (p) {
-      p.items.forEach(function (it) { rows.push([p.date, p.store, p.payment || "", it.generic || it.name, it.name, it.qty, it.category, Number(it.amount).toFixed(2)]); });
-    });
-    return "\ufeff" + rows.map(function (r) { return r.map(function (v) { return '"' + String(v).replace(/"/g, '""') + '"'; }).join(","); }).join("\n");
-  }
-  function saveFile(name, data, type) {
-    var url = URL.createObjectURL(new Blob([data], { type: type })), a = document.createElement("a");
-    a.href = url; a.download = name; document.body.appendChild(a); a.click();
-    setTimeout(function () { URL.revokeObjectURL(url); a.remove(); }, 1500);
-  }
-
-  function saveDraft() {
-    var d = state.draft;
-    var items = d.items.filter(function (it) { return String(it.name).trim() || Number(it.amount); }).map(function (it) {
-      var sq = Number(it.sizeQty); return { name: String(it.name).trim() || "Sin nombre", generic: String(it.generic || "").trim(), unit: String(it.unit || "").trim(), sizeQty: sq > 0 ? sq : "", sizeUnit: SIZE_UNITS.indexOf(it.sizeUnit) >= 0 ? it.sizeUnit : "", qty: Number(it.qty) || 1, amount: r2(Number(it.amount) || 0), category: CATS.indexOf(it.category) >= 0 ? it.category : "Otros" };
-    });
-    if (!items.length) { toast("Agrega al menos un ítem"); return; }
-    if (!d.id && !d.payment) { toast("Elige el método de pago"); return; }
-    var isNew = !d.id;
-    var rec = { id: d.id || uid(), store: String(d.store).trim() || "Sin tienda", date: isDate(d.date) ? d.date : todayStr(), payment: d.payment || "", items: items, source: d.source };
-    var idx = state.purchases.findIndex(function (p) { return p.id === rec.id; });
-    if (idx >= 0) state.purchases[idx] = rec; else state.purchases.push(rec);
-    persist(); pushSave(rec.id); notifyUpdate(rec, isNew);
-    state.tab = d.returnTab || "resumen"; state.draft = null;
-    render(); window.scrollTo(0, 0);
-    toast("Compra guardada" + (rec.payment === "VALE" && state.vale ? " · Saldo VALE: " + money(valeBalanceAsOf(todayStr())) : ""));
-  }
-
-  document.addEventListener("click", function (e) {
-    var t = e.target.closest("[data-act],[data-tab]"); if (!t) return;
-    var act = t.dataset.act;
-    if (!act && t.dataset.tab) { state.tab = t.dataset.tab; state.draft = null; state.confirmWipe = false; state.scanError = ""; state.editCode = false; state.pasting = false; state.pcmp = null; render(); window.scrollTo(0, 0); return; }
-    switch (act) {
-      case "tab": state.tab = t.dataset.tab; render(); window.scrollTo(0, 0); break;
-      case "period": state.period = t.dataset.p; state.prod = null; state.pay = null; render(); break;
-      case "pay": state.pay = state.pay === t.dataset.k ? null : t.dataset.k; render(); break;
-      case "pcmp": state.pcmp = t.dataset.k; render(); break;
-      case "pclose": state.pcmp = null; render(); break;
-      case "noop": break;
-      case "pcat": state.pcols[t.dataset.k] = !state.pcols[t.dataset.k]; try { localStorage.setItem(COLLAPSE_KEY, JSON.stringify(state.pcols)); } catch (er) {} render(); break;
-      case "cat": state.cat = state.cat === t.dataset.cat ? null : t.dataset.cat; state.prod = null; render(); break;
-      case "prod": state.prod = state.prod === t.dataset.k ? null : t.dataset.k; render(); break;
-      case "clear-cat": state.cat = null; state.prod = null; render(); break;
-      case "cam": $("#cam").click(); break;
-      case "gal": $("#gal").click(); break;
-      case "cancel-scan": if (state.scan) state.scan.ctl.abort(); break;
-      case "save-code":
-        var v = ($("#codein") || {}).value || "";
-        if (!v.trim()) { toast("Escribe el código"); break; }
-        state.code = v.trim(); setCode(state.code); state.editCode = false; state.scanError = ""; state.sync = "off"; render(); syncNow(); break;
-      case "edit-code": state.editCode = true; render(); break;
-      case "vale-edit": state.valeEdit = true; render(); break;
-      case "vale-cancel": state.valeEdit = false; render(); break;
-      case "vale-save":
-        if (saveVale({ anchorDate: ($("#v_date") || {}).value, anchorBalance: ($("#v_bal") || {}).value, rechargeAmount: ($("#v_amt") || {}).value, rechargeDay: ($("#v_day") || {}).value })) render();
-        break;
-      case "paste": state.pasting = true; render(); break;
-      case "paste-cancel": state.pasting = false; render(); break;
-      case "copy-prompt":
-        if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(CLAUDE_PROMPT).then(function () { toast("Copiado"); }).catch(function () { toast("No se pudo copiar; selecciona el texto a mano"); });
-        else toast("No se pudo copiar; selecciona el texto a mano");
-        break;
-      case "paste-go":
-        var txt = ($("#pj") || {}).value || "", a0 = txt.search(/[\{\[]/), a1 = Math.max(txt.lastIndexOf("}"), txt.lastIndexOf("]"));
-        try {
-          var dd = fromScan(JSON.parse(txt.slice(a0, a1 + 1)));
-          if (!dd.items.length) throw new Error("empty");
-          state.pasting = false; state.draft = dd; render(); window.scrollTo(0, 0);
-        } catch (er) { toast("No pude leer ese texto. Pega el JSON completo que te dio Claude."); }
-        break;
-      case "manual": state.draft = { id: null, store: "", date: todayStr(), receiptTotal: null, items: [{ name: "", generic: "", unit: "", sizeQty: "", sizeUnit: "", qty: 1, amount: 0, category: "Otros" }], payment: "", source: "manual", returnTab: "resumen" }; render(); window.scrollTo(0, 0); break;
-      case "add-item": state.draft.items.push({ name: "", generic: "", unit: "", sizeQty: "", sizeUnit: "", qty: 1, amount: 0, category: "Otros" }); render(); break;
-      case "del-item": var row = t.closest(".item"); state.draft.items.splice(+row.dataset.i, 1); render(); break;
-      case "cancel": state.draft = null; render(); break;
-      case "save": saveDraft(); break;
-      case "delete":
-        if (!state.draft.confirmDel) { state.draft.confirmDel = true; render(); break; }
-        var delId = state.draft.id;
-        state.purchases = state.purchases.filter(function (p) { return p.id !== delId; });
-        persist(); pushDelete(delId); state.draft = null; render(); toast("Compra borrada"); break;
-      case "open": openPurchase(t.dataset.id, t.dataset.rt || "historial", t.dataset.idx !== undefined ? Number(t.dataset.idx) : null); break;
-      case "csv": saveFile("gastos-supermercado.csv", toCSV(), "text/csv;charset=utf-8"); break;
-      case "backup": saveFile("mi-super-respaldo.json", JSON.stringify(state.purchases), "application/json"); break;
-      case "restore": $("#restore").click(); break;
-      case "wipe":
-        if (!state.confirmWipe) { state.confirmWipe = true; render(); break; }
-        var doWipe = function () { state.purchases = []; state.confirmWipe = false; persist(); setPend({ s: [], d: [] }); render(); toast("Datos borrados"); };
-        if (state.code && state.sync !== "nostore") {
-          api("wipe").then(doWipe).catch(function (er) { if (er && er.code === "nostore") doWipe(); else toast("No se pudo borrar en el servidor. Intenta de nuevo."); });
-        } else doWipe();
-        break;
-    }
-  });
-
-  document.addEventListener("input", function (e) {
-    var t = e.target;
-    if (t.id === "pq") { state.priceQuery = t.value; render(); var el = $("#pq"); if (el) { el.focus(); el.selectionStart = el.selectionEnd = el.value.length; } return; }
-    var d = state.draft; if (!d || !$("#main").contains(t)) return;
-    if (t.dataset.f) { d[t.dataset.f] = t.value; return; }
-    var row = t.closest(".item"), k = t.dataset.k; if (!row || !k) return;
-    var it = d.items[+row.dataset.i], v = t.value;
-    if (k === "qty" || k === "amount") v = num(v, 0);
-    it[k] = v;
-    if (k === "amount") updateTotals();
-    if (k === "qty" || k === "amount" || k === "unit" || k === "sizeQty" || k === "sizeUnit") { var up = row.querySelector("[data-up]"); if (up) up.textContent = unitPriceText(it.qty, it.amount, it.unit, it.sizeQty, it.sizeUnit); }
-  });
-
-  $("#cam").addEventListener("change", function (e) { startScan(e.target.files); e.target.value = ""; });
-  $("#gal").addEventListener("change", function (e) { startScan(e.target.files); e.target.value = ""; });
-  $("#restore").addEventListener("change", function (e) {
-    var f = e.target.files && e.target.files[0]; e.target.value = ""; if (!f) return;
-    var rd = new FileReader();
-    rd.onload = function () {
-      try {
-        var arr = JSON.parse(rd.result);
-        if (!Array.isArray(arr)) throw new Error("bad");
-        var ok = arr.filter(function (p) { return p && p.id && isDate(p.date) && Array.isArray(p.items); });
-        var ids = {}; state.purchases.forEach(function (p) { ids[p.id] = true; });
-        var added = 0, pd = getPend(); ok.forEach(function (p) { if (!ids[p.id]) { state.purchases.push(p); pd.s.push(p.id); added++; } });
-        setPend(pd); persist(); render(); toast(added + " compras restauradas"); trySync();
-      } catch (err) { toast("El archivo no es un respaldo válido"); }
-    };
-    rd.readAsText(f);
-  });
-
-  state.pcols = loadCollapsed();
-  render();
-  if (state.code) syncNow();
-  document.addEventListener("visibilitychange", function () { if (document.visibilityState === "visible" && state.code) syncNow(); });
-})();
-</script>
-</body>
-</html>
+      vino: S('<rect x="45" y="6" width="10" height="26" fill="#355a3b"/><rect x

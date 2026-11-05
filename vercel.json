@@ -1,3 +1,17 @@
 {
-  "functions": { "api/scan.js": { "maxDuration": 60 } }
+  "functions": {
+    "api/scan.js": { "maxDuration": 60 },
+    "api/data.js": { "maxDuration": 15 }
+  },
+  "headers": [
+    {
+      "source": "/(.*)",
+      "headers": [
+        { "key": "X-Content-Type-Options", "value": "nosniff" },
+        { "key": "Referrer-Policy", "value": "no-referrer" },
+        { "key": "X-Frame-Options", "value": "DENY" },
+        { "key": "Permissions-Policy", "value": "camera=(self), microphone=(), geolocation=()" }
+      ]
+    }
+  ]
 }
