@@ -7,8 +7,13 @@ const SETTINGS_KEY = "misuper:vale";
 function cleanVale(v) {
   if (!v || typeof v !== "object") return null;
   const ab = Number(v.anchorBalance), ra = Number(v.rechargeAmount), rd = parseInt(v.rechargeDay, 10);
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(String(v.anchorDate)) || isNaN(ab)) return null;
-  return { anchorDate: v.anchorDate, anchorBalance: ab, rechargeAmount: ra > 0 ? ra : 0, rechargeDay: rd >= 1 && rd <= 28 ? rd : 18 };
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(String(v.anchorDate)) || !Number.isFinite(ab)) return null;
+  return {
+    anchorDate: v.anchorDate,
+    anchorBalance: ab,
+    rechargeAmount: Number.isFinite(ra) && ra > 0 ? ra : 0,
+    rechargeDay: rd >= 1 && rd <= 28 ? rd : 18
+  };
 }
 
 function same(a, b) {
@@ -45,16 +50,21 @@ function clean(p) {
     date: p.date,
     payment: String(p.payment || "").slice(0, 40),
     source: String(p.source || "manual").slice(0, 10),
-    items: p.items.map((i) => ({
-      name: String((i && i.name) || "").slice(0, 200),
-      generic: String((i && i.generic) || "").slice(0, 120),
-      unit: String((i && i.unit) || "").slice(0, 40),
-      sizeQty: Number(i && i.sizeQty) > 0 ? Number(i.sizeQty) : "",
-      sizeUnit: String((i && i.sizeUnit) || "").slice(0, 10),
-      qty: Number(i && i.qty) || 1,
-      amount: Number(i && i.amount) || 0,
-      category: String((i && i.category) || "Otros").slice(0, 40)
-    }))
+    items: p.items.map((i) => {
+      const sq = Number(i && i.sizeQty);
+      const qy = Number(i && i.qty);
+      const am = Number(i && i.amount);
+      return {
+        name: String((i && i.name) || "").slice(0, 200),
+        generic: String((i && i.generic) || "").slice(0, 120),
+        unit: String((i && i.unit) || "").slice(0, 40),
+        sizeQty: Number.isFinite(sq) && sq > 0 ? sq : "",
+        sizeUnit: String((i && i.sizeUnit) || "").slice(0, 10),
+        qty: Number.isFinite(qy) && qy !== 0 ? qy : 1,
+        amount: Number.isFinite(am) ? am : 0,
+        category: String((i && i.category) || "Otros").slice(0, 40)
+      };
+    })
   };
 }
 
