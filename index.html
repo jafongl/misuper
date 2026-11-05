@@ -692,7 +692,56 @@ textarea { min-height:140px; resize:vertical; font-size:13px; }
     function box(col, deco) { return S('<rect x="26" y="12" width="48" height="72" rx="3" fill="' + col + '"/><rect x="26" y="12" width="48" height="10" fill="#000" opacity=".12"/><circle cx="50" cy="52" r="16" fill="#fff" opacity=".9"/>' + (deco || '')); }
     function bag(label, deco) { return S('<path d="M24 22h52l3 62H21z" fill="#f4efe6" stroke="#d4cbb8" stroke-width="2"/><path d="M24 22h52l-5 10H29z" fill="#e4dbc5"/><rect x="30" y="44" width="40" height="28" rx="4" fill="' + label + '"/>' + (deco || '')); }
     var paw = '<ellipse cx="50" cy="63" rx="8" ry="6" fill="#fff"/><circle cx="40" cy="54" r="3.4" fill="#fff"/><circle cx="46" cy="50" r="3.4" fill="#fff"/><circle cx="54" cy="50" r="3.4" fill="#fff"/><circle cx="60" cy="54" r="3.4" fill="#fff"/>';
-    return {
+    function canD(body, band, deco) { return S('<rect x="28" y="20" width="44" height="64" rx="6" fill="' + body + '"/><rect x="28" y="38" width="44" height="26" fill="' + band + '"/><ellipse cx="50" cy="20" rx="22" ry="5" fill="#e9edf2"/><ellipse cx="50" cy="20" rx="14" ry="2.5" fill="#c4ccd6"/>' + (deco || '')); }
+    function jar(col, lid, deco) { return S('<rect x="30" y="16" width="40" height="12" rx="3" fill="' + lid + '"/><path d="M28 28h44v50c0 5-3 8-8 8H36c-5 0-8-3-8-8z" fill="#eef4f8" stroke="#cdd8e2" stroke-width="2"/><path d="M30 42h40v36c0 4-2 6-6 6H36c-4 0-6-2-6-6z" fill="' + col + '"/>' + (deco || '')); }
+    function squeeze(col, cap, deco) { return S('<path d="M42 8h16l-2 12H44z" fill="' + cap + '"/><path d="M36 20h28c6 8 8 16 8 28v34c0 4-3 6-7 6H35c-4 0-7-2-7-6V48c0-12 2-20 8-28z" fill="' + col + '"/><rect x="34" y="46" width="32" height="26" rx="3" fill="#fff" opacity=".92"/>' + (deco || '')); }
+    function spray(col) { return S('<path d="M44 10h18l8 4v8l-8 2H44z" fill="#4a5568"/><rect x="42" y="22" width="16" height="10" fill="#4a5568"/><path d="M34 32h32c4 6 6 12 6 22v28c0 4-3 6-6 6H34c-3 0-6-2-6-6V54c0-10 2-16 6-22z" fill="' + col + '"/><rect x="32" y="52" width="36" height="22" rx="3" fill="#fff" opacity=".9"/><circle cx="50" cy="63" r="6" fill="' + col + '" opacity=".6"/>'); }
+    function aerosol(col) { return S('<rect x="34" y="26" width="32" height="58" rx="5" fill="' + col + '"/><rect x="34" y="14" width="32" height="14" rx="4" fill="#cfd8e3"/><rect x="46" y="8" width="10" height="8" rx="2" fill="#8a94a3"/><rect x="34" y="46" width="32" height="20" fill="#fff" opacity=".88"/><circle cx="50" cy="56" r="5" fill="' + col + '"/>'); }
+    function tube(col, cap, deco) { return S('<rect x="34" y="12" width="32" height="6" rx="1" fill="#d5dbe3"/><path d="M34 18h32l4 58H30z" fill="' + col + '"/><rect x="30" y="76" width="40" height="10" rx="2" fill="' + cap + '"/><rect x="34" y="40" width="32" height="18" fill="#fff" opacity=".9"/>' + (deco || '')); }
+    function shaker(col, cap) { return S('<path d="M32 28h36l2 54c0 3-2 4-5 4H35c-3 0-5-1-5-4z" fill="#f7fafc" stroke="#d6dde6" stroke-width="2"/><path d="M33 46h34l1 36H32z" fill="' + col + '"/><rect x="30" y="16" width="40" height="14" rx="3" fill="' + cap + '"/><g fill="#fff" opacity=".7"><circle cx="42" cy="22" r="1.6"/><circle cx="50" cy="22" r="1.6"/><circle cx="58" cy="22" r="1.6"/></g>'); }
+    function carton(col, deco) { return S('<path d="M28 32L50 14l22 18z" fill="#dfe7f1"/><rect x="28" y="32" width="44" height="54" fill="#fff" stroke="#c8d2de" stroke-width="2"/><rect x="28" y="48" width="44" height="22" fill="' + col + '"/>' + (deco || '')); }
+    function tub(col, deco) { return S('<rect x="22" y="22" width="56" height="10" rx="3" fill="#cfd8e3"/><path d="M24 32h52l-4 52H28z" fill="#fff" stroke="#d5dbe3" stroke-width="2"/><path d="M27 52h46l-2 20H29z" fill="' + col + '"/>' + (deco || '')); }
+    function tray(meat, detail) { return S('<path d="M12 56h76l-6 26H18z" fill="#f4f6f8" stroke="#d3dbe3" stroke-width="2"/><path d="M16 56c0-18 14-26 34-26s34 8 34 26z" fill="' + meat + '"/>' + (detail || '') + '<path d="M16 56h68" stroke="#fff" stroke-width="3" opacity=".5"/>'); }
+    function bun(col, deco) { return S('<path d="M14 62c0-22 16-36 36-36s36 14 36 36c0 8-6 14-14 14H28c-8 0-14-6-14-14z" fill="' + col + '"/><path d="M30 40c6-6 14-8 24-6" stroke="#fff" stroke-width="4" opacity=".35" fill="none" stroke-linecap="round"/>' + (deco || '')); }
+    function fruitG(col, leaf) { return S('<circle cx="50" cy="56" r="31" fill="' + col + '"/><path d="M50 26c4-8 12-10 18-8-2 8-10 12-18 8z" fill="' + leaf + '"/><ellipse cx="38" cy="46" rx="7" ry="10" fill="#fff" opacity=".25"/>'); }
+    function leafy(col, col2) { return S('<path d="M50 90V52" stroke="#4c7a2f" stroke-width="4"/><g fill="' + col + '"><circle cx="32" cy="42" r="14"/><circle cx="50" cy="30" r="15"/><circle cx="68" cy="42" r="14"/><circle cx="40" cy="58" r="12"/><circle cx="60" cy="58" r="12"/></g><g fill="' + col2 + '"><circle cx="32" cy="38" r="6"/><circle cx="50" cy="26" r="6"/><circle cx="68" cy="38" r="6"/></g>'); }
+    function snackbag(col, deco) { return S('<path d="M22 14h56l-5 8 5 62H22l5-62z" fill="' + col + '"/><path d="M22 14l4 6 4-6 4 6 4-6 4 6 4-6 4 6 4-6 4 6 4-6 4 6 4-6" fill="none" stroke="#000" stroke-opacity=".18" stroke-width="2"/>' + (deco || '')); }
+    function jug(col, deco) { return S('<path d="M30 28h40c6 6 8 12 8 22v32c0 4-3 6-7 6H29c-4 0-7-2-7-6V50c0-10 2-16 8-22z" fill="' + col + '"/><rect x="34" y="14" width="22" height="14" rx="3" fill="#fff"/><path d="M60 18c10 0 16 4 16 12" stroke="' + col + '" stroke-width="6" fill="none"/><rect x="30" y="50" width="40" height="22" rx="3" fill="#fff" opacity=".9"/>' + (deco || '')); }
+    var fishDeco = '<g transform="translate(35 46)"><ellipse cx="13" cy="8" rx="11" ry="5.5" fill="#3b6fb0"/><path d="M23 8l8-6v12z" fill="#3b6fb0"/><circle cx="7" cy="7" r="1.6" fill="#fff"/></g>';
+    var drop = '<path d="M50 52c-5 6-7 8-7 12a7 7 0 0 0 14 0c0-4-2-6-7-12z" fill="#fff"/>';
+    function decoOf(h) {
+      var k = h % 6;
+      if (k === 0) return '<circle cx="50" cy="60" r="8" fill="#fff" opacity=".9"/>';
+      if (k === 1) return '<path d="M36 60c5-5 9-5 14 0s9 5 14 0" stroke="#fff" stroke-width="3" fill="none"/>';
+      if (k === 2) return '<path d="M50 50l6 9 10 1-7 7 2 10-11-5-11 5 2-10-7-7 10-1z" fill="#fff" opacity=".9"/>';
+      if (k === 3) return '<g fill="#fff"><circle cx="40" cy="56" r="3"/><circle cx="50" cy="64" r="3"/><circle cx="60" cy="56" r="3"/></g>';
+      if (k === 4) return '<path d="M38 66l12-18 12 18z" fill="#fff" opacity=".9"/>';
+      return '<rect x="38" y="54" width="24" height="4" fill="#fff"/><rect x="38" y="62" width="24" height="4" fill="#fff"/>';
+    }
+    var PAL = ["#e8553d", "#f2a33a", "#e2c22e", "#6bc24a", "#3fb0a0", "#3b82c4", "#8a63c9", "#e85d8a", "#a8742f", "#5b6b7a", "#2f9a6a", "#c9453a"];
+    var MEATC = ["#c4423c", "#e8a09a", "#f08a6a", "#d98a4a"];
+    var GEN = {
+      "Despensa": [function (c, c2, d) { return jar(c, c2, d); }, function (c, c2, d) { return canD(c2, c, d); }, function (c, c2, d) { return box(c, d); }, function (c, c2, d) { return bag(c, d); }, function (c, c2, d) { return squeeze(c, c2, d); }],
+      "Bebidas": [function (c, c2) { return bottle(c, c2, false); }, function (c, c2, d) { return canD(c, c2, d); }, function (c, c2, d) { return carton(c, d); }],
+      "Snacks y dulces": [function (c, c2, d) { return snackbag(c, d); }, function (c, c2, d) { return box(c, d); }, function (c, c2, d) { return canD(c2, c, d); }],
+      "Congelados": [function (c, c2, d) { return box(c, d); }, function (c, c2, d) { return tub(c, d); }, function (c, c2, d) { return snackbag(c, d); }],
+      "Limpieza del hogar": [function (c, c2) { return bottle(c, c2, false); }, function (c) { return spray(c); }, function (c, c2, d) { return jug(c, d); }, function (c) { return aerosol(c); }],
+      "Cuidado personal": [function (c, c2, d) { return tube(c, c2, d); }, function (c, c2) { return bottle(c, c2, true); }, function (c, c2, d) { return jar(c, c2, d); }],
+      "Lácteos y huevos": [function (c, c2, d) { return carton(c, d); }, function (c, c2, d) { return tub(c, d); }, function (c, c2, d) { return jar(c, c2, d); }],
+      "Carnes y pescados": [function (c, c2, d, h) { return tray(MEATC[h % MEATC.length]); }],
+      "Panadería": [function (c, c2, d) { return bun(c, d); }, function (c, c2, d) { return box(c, d); }],
+      "Frutas y verduras": [function (c, c2) { return fruitG(c, "#4c9a3a"); }, function (c, c2) { return leafy("#3f9a45", "#7ac36a"); }, function (c, c2, d) { return bag(c, d); }],
+      "Mascotas": [function (c, c2, d) { return bag(c, d); }, function (c, c2, d) { return canD(c, c2, d); }],
+      "Otros": [function (c, c2, d) { return box(c, d); }, function (c, c2, d) { return bag(c, d); }, function (c, c2) { return bottle(c, c2, false); }, function (c, c2, d) { return jar(c, c2, d); }]
+    };
+    function hashStr(s) { var h = 7; for (var i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0; return h; }
+    function gen(name, cat) {
+      var h = hashStr(String(name || "")), list = GEN[cat] || GEN["Otros"];
+      var ci = h % PAL.length, c2i = (h >>> 4) % PAL.length; if (c2i === ci) c2i = (c2i + 5) % PAL.length;
+      var si = (h >>> 8) % list.length, di = (h >>> 12) % 6;
+      return { id: "g" + cat + si + "-" + ci + "-" + c2i + "-" + di, svg: list[si](PAL[ci], PAL[c2i], decoOf(di), h >>> 3) };
+    }
+    var OBJ = {
       manzana: S('<path d="M50 32C40 24 20 28 20 52c0 18 13 34 25 34 3 0 3-1 5-1s2 1 5 1c12 0 25-16 25-34 0-24-20-28-30-20z" fill="#d93a32"/><path d="M50 32c0-8 2-14 8-18" stroke="#6b4a2b" stroke-width="4" fill="none" stroke-linecap="round"/><path d="M54 24c8-8 18-6 20-4-2 8-12 12-20 4z" fill="#4c9a3a"/><ellipse cx="33" cy="48" rx="5" ry="10" fill="#fff" opacity=".25"/>'),
       banano: S('<path d="M18 26C20 62 46 86 82 74c5-2 4-9-2-9C54 66 42 48 36 26c-1-5-17-6-18 0z" fill="#f6d54a" stroke="#c9a227" stroke-width="2.5" stroke-linejoin="round"/><path d="M18 26c0-5 16-6 18 0" fill="#7a5a2a"/><path d="M26 34c6 22 22 34 44 38" fill="none" stroke="#fff" stroke-width="3" opacity=".35" stroke-linecap="round"/>'),
       naranja: S('<circle cx="50" cy="54" r="31" fill="#f5a02a"/><path d="M50 24c4-8 12-10 18-8-2 8-10 12-18 8z" fill="#4c9a3a"/><circle cx="40" cy="44" r="7" fill="#fff" opacity=".25"/><circle cx="60" cy="66" r="1.6" fill="#d9831a"/><circle cx="46" cy="70" r="1.6" fill="#d9831a"/><circle cx="66" cy="50" r="1.6" fill="#d9831a"/>'),
@@ -762,38 +811,134 @@ textarea { min-height:140px; resize:vertical; font-size:13px; }
       mascota: bag('#6b8f3a', paw),
       canasta: S('<path d="M30 44c0-20 8-30 20-30s20 10 20 30" fill="none" stroke="#a8743a" stroke-width="5" stroke-linecap="round"/><path d="M12 44h76l-8 40H20z" fill="#c98a4a"/><path d="M12 44h76" stroke="#a8743a" stroke-width="4"/><path d="M26 54l4 24M42 54l2 24M58 54l-2 24M74 54l-4 24M16 62h68M18 74h64" stroke="#a8743a" stroke-width="2" fill="none"/>'),
       frutas: S('<path d="M12 58h76c0 18-14 28-38 28S12 76 12 58z" fill="#b9823a"/><circle cx="34" cy="46" r="17" fill="#d93a32"/><circle cx="62" cy="44" r="17" fill="#f5a02a"/><circle cx="48" cy="34" r="15" fill="#f2e04a"/><path d="M34 30c2-6 8-8 12-6M62 28c2-6 8-8 12-6" stroke="#3f9a45" stroke-width="4" fill="none" stroke-linecap="round"/><ellipse cx="28" cy="40" rx="4" ry="7" fill="#fff" opacity=".25"/>'),
-      congelados: box('#8fc7ee', '<path d="M50 40v24M38 52h24M41 43l18 18M59 43L41 61" stroke="#3b82c4" stroke-width="2.5" stroke-linecap="round"/>')
+      congelados: box('#8fc7ee', '<path d="M50 40v24M38 52h24M41 43l18 18M59 43L41 61" stroke="#3b82c4" stroke-width="2.5" stroke-linecap="round"/>'),
+      lima: S('<ellipse cx="50" cy="56" rx="30" ry="27" fill="#7bc043"/><path d="M50 30c4-8 12-10 18-8-2 8-10 12-18 8z" fill="#3f8f2f"/><ellipse cx="38" cy="48" rx="8" ry="5" fill="#fff" opacity=".28"/><circle cx="62" cy="64" r="1.6" fill="#5a9a2e"/><circle cx="46" cy="68" r="1.6" fill="#5a9a2e"/>'),
+      coco: S('<circle cx="50" cy="54" r="32" fill="#7a5230"/><g fill="#4a2f18"><circle cx="40" cy="44" r="4"/><circle cx="58" cy="44" r="4"/><circle cx="49" cy="58" r="4"/></g><path d="M24 44c6-12 14-16 26-16" stroke="#a37a4f" stroke-width="3" fill="none" opacity=".6" stroke-linecap="round"/>'),
+      pera: S('<path d="M50 18c-10 0-12 14-16 24-6 10-10 18-4 30 6 12 38 12 44 0 6-12 2-20-4-30-4-10-6-24-20-24z" fill="#b9d04a"/><path d="M50 18c0-6 2-10 6-12" stroke="#6b4a2b" stroke-width="3.5" fill="none" stroke-linecap="round"/><path d="M54 14c6-4 12-2 14 0-4 6-10 6-14 0z" fill="#4c9a3a"/><ellipse cx="40" cy="58" rx="4" ry="9" fill="#fff" opacity=".3"/>'),
+      durazno: S('<circle cx="50" cy="56" r="31" fill="#f6a98b"/><path d="M50 26c-6 14-6 40 0 60" stroke="#e0765c" stroke-width="3" fill="none"/><ellipse cx="64" cy="50" rx="12" ry="22" fill="#f08a6a" opacity=".5"/><path d="M52 26c6-8 14-10 20-6-2 8-12 10-20 6z" fill="#4c9a3a"/>'),
+      cereza: S('<path d="M32 66c6-20 14-36 36-46M66 66c0-20 0-30 2-46" stroke="#4c7a2f" stroke-width="3" fill="none"/><circle cx="32" cy="70" r="14" fill="#c0182f"/><circle cx="66" cy="70" r="14" fill="#c0182f"/><circle cx="27" cy="65" r="3.5" fill="#fff" opacity=".35"/><circle cx="61" cy="65" r="3.5" fill="#fff" opacity=".35"/><path d="M68 20c8-4 16-2 18 2-6 6-14 4-18-2z" fill="#4c9a3a"/>'),
+      melon: S('<circle cx="50" cy="54" r="32" fill="#f0c27a"/><g stroke="#d9a050" stroke-width="2" fill="none"><path d="M26 40c14 8 34 8 48 0M22 56c16 8 40 8 56 0M26 72c14 8 34 8 48 0"/><path d="M40 26c-6 16-6 40 0 56M60 26c6 16 6 40 0 56M50 22v64"/></g>'),
+      papaya: S('<path d="M50 8C36 8 24 40 24 62c0 16 12 26 26 26s26-10 26-26C76 40 64 8 50 8z" fill="#f08a3a"/><path d="M50 22c-8 0-16 24-16 40 0 10 6 18 16 18s16-8 16-18c0-16-8-40-16-40z" fill="#f6b563"/><g fill="#2a1a1a"><circle cx="46" cy="52" r="3"/><circle cx="54" cy="56" r="3"/><circle cx="48" cy="64" r="3"/><circle cx="55" cy="68" r="3"/><circle cx="50" cy="44" r="2.6"/></g>'),
+      platano: S('<path d="M16 24C18 62 46 88 84 76c6-2 4-10-3-10C54 68 42 48 36 24c-1-6-19-6-20 0z" fill="#8cc152" stroke="#5f8f2f" stroke-width="3" stroke-linejoin="round"/><path d="M16 24c0-6 18-6 20 0" fill="#5a4a2a"/><path d="M26 34c6 22 22 34 46 38" fill="none" stroke="#fff" stroke-width="3" opacity=".3" stroke-linecap="round"/>'),
+      yuca: S('<path d="M12 30c10-8 26-8 40 2 14 10 30 28 36 48-18 2-40-8-52-22C26 46 14 40 12 30z" fill="#8a5a33"/><ellipse cx="16" cy="32" rx="5" ry="9" fill="#f3e6cf" transform="rotate(-40 16 32)"/><path d="M26 34c10 4 18 12 26 22M40 28c10 6 22 20 28 34" stroke="#6b4426" stroke-width="2" fill="none"/>'),
+      calabaza: S('<ellipse cx="50" cy="58" rx="34" ry="28" fill="#f08a24"/><path d="M50 30c-14 6-18 40 0 56M50 30c14 6 18 40 0 56M36 34c-10 10-8 40 2 50M64 34c10 10 8 40-2 50" stroke="#c96a12" stroke-width="2.4" fill="none"/><rect x="46" y="18" width="8" height="14" rx="3" fill="#5a7a2a"/>'),
+      apio: S('<path d="M40 86L36 28M52 86V24M64 86l4-58" stroke="#8fc060" stroke-width="12" stroke-linecap="round"/><path d="M52 86V24" stroke="#a5d070" stroke-width="12" stroke-linecap="round"/><g fill="#4c9a3a"><circle cx="34" cy="22" r="9"/><circle cx="52" cy="14" r="9"/><circle cx="70" cy="22" r="9"/></g><path d="M40 72V34M52 72V28M64 72l2-38" stroke="#6b9a3f" stroke-width="1.6" fill="none"/>'),
+      culantro: S('<path d="M50 90V54" stroke="#4c7a2f" stroke-width="4"/><g fill="#3f9a45"><circle cx="34" cy="40" r="11"/><circle cx="50" cy="30" r="12"/><circle cx="66" cy="40" r="11"/><circle cx="42" cy="54" r="10"/><circle cx="60" cy="54" r="10"/></g><g fill="#7ac36a"><circle cx="34" cy="38" r="5"/><circle cx="50" cy="28" r="5"/><circle cx="66" cy="38" r="5"/></g><rect x="42" y="72" width="16" height="8" rx="2" fill="#d9a04a"/>'),
+      espinaca: S('<path d="M50 88C20 70 14 40 30 22c10-10 28-10 40 0 16 18 10 48-20 66z" fill="#2f7a3a"/><path d="M50 86V26M50 60l-14-12M50 48l14-10M50 70l-12-8" stroke="#8fd08a" stroke-width="2.6" fill="none" stroke-linecap="round"/>'),
+      repollo: S('<circle cx="50" cy="54" r="34" fill="#9fd36a"/><path d="M50 20c-14 14-14 56 0 68M50 20c14 14 14 56 0 68M22 46c20-6 36-6 56 0M24 66c18 6 34 6 52 0" stroke="#6faa3f" stroke-width="2.4" fill="none"/>'),
+      coliflor: S('<path d="M20 60c4 20 20 26 30 26s26-6 30-26c-10 4-20 6-30 6s-20-2-30-6z" fill="#6fae4a"/><g fill="#f4efe0" stroke="#e0d8c0" stroke-width="2"><circle cx="34" cy="48" r="14"/><circle cx="50" cy="38" r="16"/><circle cx="66" cy="48" r="14"/><circle cx="50" cy="54" r="14"/></g>'),
+      aji: S('<path d="M24 30C42 18 74 28 84 64c-10-8-22-12-34-12-14 0-20 8-26 8-8-6-8-22 0-30z" fill="#d6312b"/><path d="M22 32c-2-8 4-14 12-14-2 6-4 10-8 14z" fill="#3f9a45"/><path d="M34 34c10-4 22-2 32 6" stroke="#fff" stroke-width="3" opacity=".3" fill="none" stroke-linecap="round"/>'),
+      remolacha: S('<path d="M50 24c-20 0-30 18-26 36 4 16 16 26 26 26s22-10 26-26c4-18-6-36-26-36z" fill="#8a1f4a"/><path d="M50 86v8" stroke="#8a1f4a" stroke-width="3"/><path d="M44 26c-6-10-4-18 0-22M50 26c0-10 2-18 4-22M56 26c6-8 10-14 16-14" stroke="#4c9a3a" stroke-width="4" fill="none" stroke-linecap="round"/><ellipse cx="38" cy="48" rx="5" ry="10" fill="#fff" opacity=".2"/>'),
+      jengibre: S('<path d="M14 58c4-12 16-14 24-10 4-14 18-18 26-8 10-6 22 2 18 14 6 8 2 20-10 20-4 10-18 12-26 4-10 6-24 0-24-10-6-2-10-6-8-10z" fill="#d9b27a"/><g stroke="#b88a50" stroke-width="2" fill="none"><path d="M24 56c8-2 14-2 20 0M48 50c8-2 14 0 18 4M36 66c8 2 14 0 20-2"/></g>'),
+      habichuela: S('<path d="M14 66C30 36 56 20 88 20" fill="none" stroke="#5aa845" stroke-width="10" stroke-linecap="round"/><path d="M12 86C34 56 60 40 88 40" fill="none" stroke="#7ac35a" stroke-width="10" stroke-linecap="round"/><path d="M12 86C34 56 60 40 88 40" fill="none" stroke="#fff" stroke-width="2" opacity=".35" stroke-linecap="round"/>'),
+      arvejas: S('<path d="M10 56c20-30 60-30 80 0-20 24-60 24-80 0z" fill="#5aa845"/><path d="M16 56c18-20 50-20 68 0-18 14-50 14-68 0z" fill="#a8d86a"/><g fill="#6ab23a"><circle cx="30" cy="56" r="7"/><circle cx="45" cy="55" r="7.5"/><circle cx="61" cy="55" r="7.5"/><circle cx="74" cy="56" r="6.5"/></g><g fill="#fff" opacity=".35"><circle cx="28" cy="53" r="2"/><circle cx="43" cy="52" r="2"/><circle cx="59" cy="52" r="2"/></g>'),
+      cebollin: S('<path d="M42 90c-4-16-4-24 0-34h16c4 10 4 18 0 34z" fill="#f4f1e6" stroke="#d9d2bc" stroke-width="2"/><path d="M42 56C34 40 30 24 26 10M50 54V8M58 56c8-16 12-32 16-46" stroke="#4c9a3a" stroke-width="7" fill="none" stroke-linecap="round"/>'),
+      molida: tray('#c4423c', '<g fill="#e07a72"><circle cx="34" cy="48" r="3"/><circle cx="50" cy="42" r="3"/><circle cx="66" cy="48" r="3"/><circle cx="42" cy="52" r="2.5"/><circle cx="58" cy="52" r="2.5"/></g>'),
+      costilla: S('<path d="M12 36c0-8 8-12 38-12s38 4 38 12v28c0 8-8 12-38 12S12 72 12 64z" fill="#b8503a"/><g stroke="#f4e6d8" stroke-width="7" stroke-linecap="round"><path d="M26 32v38M42 30v42M58 30v42M74 32v38"/></g>'),
+      pechuga: S('<path d="M16 62c0-22 22-38 46-34 18 4 26 18 20 32-8 18-30 26-48 18-12-4-18-8-18-16z" fill="#f4c4a4"/><path d="M30 56c10-10 24-14 38-10" stroke="#e8a37e" stroke-width="3" fill="none" stroke-linecap="round"/><ellipse cx="62" cy="40" rx="8" ry="4" fill="#fff" opacity=".4"/>'),
+      alitas: S('<path d="M14 62c4-22 24-36 46-30 10 4 14 10 12 18-4 14-18 24-34 24-12 0-26-4-24-12z" fill="#d9822b"/><path d="M60 34c8-6 18-4 22 4" stroke="#d9822b" stroke-width="9" stroke-linecap="round" fill="none"/><circle cx="86" cy="40" r="5" fill="#f7f1e3"/><path d="M26 56c8-8 20-10 30-6" stroke="#f0b060" stroke-width="3" fill="none" stroke-linecap="round"/>'),
+      chuleta: S('<path d="M14 50c0-18 18-30 40-28 20 2 32 14 30 30-2 18-18 28-38 26-22-2-32-14-32-28z" fill="#e8a09a"/><path d="M18 52c0-14 14-24 32-22" stroke="#fbd9d4" stroke-width="5" fill="none" stroke-linecap="round"/><circle cx="64" cy="54" r="10" fill="#f7efe4"/><circle cx="64" cy="54" r="4" fill="#e3d4c0"/>'),
+      salmon: S('<path d="M10 52c14-18 34-24 52-18 14 4 22 12 28 22-6 14-22 24-42 24-18 0-34-10-38-28z" fill="#f08a6a"/><g stroke="#fbd0c0" stroke-width="3" fill="none" stroke-linecap="round"><path d="M24 50c10-6 24-8 38-4M26 62c12-4 28-4 40 0M34 40c8-2 16-2 22 0"/></g><path d="M10 52c14-18 34-24 52-18" fill="none" stroke="#c9604a" stroke-width="3" stroke-linecap="round"/>'),
+      atun: canD('#3b6fb0', '#eaf2fa', fishDeco),
+      sardina: S('<rect x="12" y="34" width="76" height="38" rx="9" fill="#c9d1da"/><rect x="18" y="40" width="64" height="26" rx="6" fill="#2f4358"/><g fill="#a9bfd4"><ellipse cx="38" cy="53" rx="13" ry="5"/><ellipse cx="62" cy="53" rx="13" ry="5"/></g><g fill="#2f4358"><path d="M50 53l7-5v10zM74 53l7-5v10z"/></g><circle cx="86" cy="53" r="3" fill="#aeb8c4"/>'),
+      crema: S('<rect x="38" y="10" width="24" height="10" rx="3" fill="#cfd8e3"/><path d="M34 20h32l4 12v52H30V32z" fill="#fff" stroke="#d5dbe3" stroke-width="2"/><rect x="30" y="46" width="40" height="20" fill="#f4c3d0"/><circle cx="50" cy="56" r="6" fill="#fff"/>'),
+      condensada: canD('#f4f7fb', '#2f7fd0', drop),
+      polvo: S('<rect x="30" y="22" width="40" height="62" rx="5" fill="#2f7fd0"/><rect x="28" y="12" width="44" height="14" rx="4" fill="#f4f6f9"/><rect x="30" y="40" width="40" height="24" fill="#fff"/><path d="M50 44c-4 5-6 7-6 10a6 6 0 0 0 12 0c0-3-2-5-6-10z" fill="#2f7fd0"/>'),
+      panmolde: S('<path d="M16 42c0-12 10-18 34-18s34 6 34 18v36c0 4-3 6-6 6H22c-3 0-6-2-6-6z" fill="#e2b273"/><rect x="22" y="42" width="56" height="40" rx="3" fill="#f5e3bf"/><path d="M34 42v40M46 42v40M58 42v40M70 42v40" stroke="#e0c690" stroke-width="2"/>'),
+      tortilla: S('<ellipse cx="50" cy="66" rx="38" ry="12" fill="#d9b070"/><ellipse cx="50" cy="60" rx="38" ry="12" fill="#e8c88a"/><ellipse cx="50" cy="54" rx="38" ry="12" fill="#f3dba6"/><g fill="#d9a85a"><circle cx="36" cy="54" r="2"/><circle cx="52" cy="50" r="2"/><circle cx="64" cy="56" r="2"/></g>'),
+      dona: S('<circle cx="50" cy="54" r="34" fill="#e0a24a"/><path d="M18 52c0-20 14-30 32-30s32 10 32 30c0 6-6 8-8 4-4 6-10 4-12 0-4 6-12 6-14 0-4 6-12 4-14 0-4 4-16 4-16-4z" fill="#f08cb0"/><circle cx="50" cy="54" r="11" fill="#f4f2ec"/><g fill="#fff"><rect x="30" y="38" width="6" height="2.4" rx="1" transform="rotate(30 33 39)"/><rect x="58" y="36" width="6" height="2.4" rx="1" transform="rotate(-20 61 37)"/><rect x="66" y="52" width="6" height="2.4" rx="1" transform="rotate(60 69 53)"/><rect x="40" y="68" width="6" height="2.4" rx="1"/></g>'),
+      torta: S('<rect x="20" y="52" width="60" height="30" rx="4" fill="#d9a05b"/><rect x="20" y="44" width="60" height="12" rx="4" fill="#fff4e6"/><rect x="26" y="30" width="48" height="16" rx="4" fill="#f08cb0"/><circle cx="50" cy="24" r="6" fill="#d6312b"/><path d="M50 18c0-4 2-6 4-8" stroke="#4c9a3a" stroke-width="2.5" fill="none"/>'),
+      ketchup: squeeze('#d6312b', '#f5f5f5', '<path d="M50 52c-5 5-7 8-7 12a7 7 0 0 0 14 0c0-4-2-7-7-12z" fill="#d6312b"/>'),
+      mostaza: squeeze('#f2c230', '#e0a823', '<path d="M38 60c5-5 9-5 12 0s8 5 12 0" stroke="#f2c230" stroke-width="3.5" fill="none" stroke-linecap="round"/>'),
+      mayonesa: jar('#f6f2e6', '#2f7fd0', '<ellipse cx="50" cy="62" rx="13" ry="9" fill="#fff"/><ellipse cx="50" cy="62" rx="7" ry="4" fill="#f2e6a8"/>'),
+      mermelada: jar('#7b3f8a', '#d6312b', '<circle cx="50" cy="62" r="9" fill="#e8445a"/><path d="M50 54c0-4 2-6 4-6" stroke="#3f9a45" stroke-width="2.4" fill="none"/>'),
+      miel: jar('#e0a21f', '#8a5a2b', '<path d="M50 52l7 4v8l-7 4-7-4v-8z" fill="#fff" opacity=".85"/>'),
+      manibutter: jar('#c98a4a', '#d6312b', '<g fill="#f3e6cf"><ellipse cx="44" cy="62" rx="7" ry="4.5" transform="rotate(-20 44 62)"/><ellipse cx="57" cy="62" rx="7" ry="4.5" transform="rotate(20 57 62)"/></g>'),
+      aceitunas: jar('#9aa84a', '#2f6f3a', '<g fill="#5d7a2a"><circle cx="42" cy="58" r="5.5"/><circle cx="56" cy="56" r="5.5"/><circle cx="50" cy="68" r="5.5"/></g><g fill="#d6312b"><circle cx="42" cy="58" r="1.8"/><circle cx="56" cy="56" r="1.8"/><circle cx="50" cy="68" r="1.8"/></g>'),
+      vinagre: S('<rect x="44" y="8" width="12" height="12" rx="2" fill="#7a3b3b"/><path d="M40 20h20l8 12v50c0 4-3 6-6 6H38c-3 0-6-2-6-6V32z" fill="#f2e1c8" stroke="#dcc3a0" stroke-width="2"/><rect x="34" y="48" width="32" height="22" fill="#fff" opacity=".9"/><circle cx="50" cy="59" r="6" fill="#a8482f"/>'),
+      pimienta: shaker('#2b2b2b', '#4a4a4a'),
+      condimento: shaker('#d9822b', '#8a4b12'),
+      picante: S('<rect x="44" y="12" width="12" height="10" rx="2" fill="#2b2b2b"/><path d="M40 22h20l6 10v48c0 4-3 6-6 6H40c-3 0-6-2-6-6V32z" fill="#d6312b"/><rect x="36" y="46" width="28" height="22" rx="2" fill="#fbe9a0"/><path d="M50 50c4 4 5 7 3 10-1 3-5 3-6 0-2-3 0-6 3-10z" fill="#d6312b"/>'),
+      soya: S('<rect x="44" y="8" width="12" height="12" rx="2" fill="#d6312b"/><path d="M40 20h20l8 14v48c0 4-3 6-6 6H38c-3 0-6-2-6-6V34z" fill="#2f1f17"/><rect x="35" y="50" width="30" height="20" fill="#f3ecda"/><circle cx="50" cy="60" r="5" fill="#2f1f17"/>'),
+      sopainst: S('<path d="M26 34h48l-6 50H32z" fill="#e8553d"/><path d="M26 34h48v10H26z" fill="#f4f6f9"/><rect x="30" y="52" width="40" height="16" fill="#fff" opacity=".9"/><path d="M36 30c4-6 8-6 12 0M52 30c4-6 8-6 12 0" stroke="#d9a04a" stroke-width="3" fill="none" stroke-linecap="round"/>'),
+      avena: S('<rect x="30" y="20" width="40" height="64" rx="6" fill="#d9a04a"/><rect x="28" y="12" width="44" height="12" rx="4" fill="#8a5a2b"/><rect x="30" y="40" width="40" height="26" fill="#fff" opacity=".9"/><path d="M50 62V46M50 52l-6-5M50 52l6-5M50 58l-6-5M50 58l6-5" stroke="#d9a04a" stroke-width="2" fill="none" stroke-linecap="round"/>'),
+      mani: S('<g fill="#d9a85a" stroke="#b9823a" stroke-width="2"><path d="M14 44c-4-10 6-18 14-12 4 2 6 4 10 4s8-4 12-4c10 0 14 12 6 18-4 3-8 1-12 0-4-1-6-1-10 0-6 2-16 2-20-6z" transform="translate(4 -4)"/><path d="M14 44c-4-10 6-18 14-12 4 2 6 4 10 4s8-4 12-4c10 0 14 12 6 18-4 3-8 1-12 0-4-1-6-1-10 0-6 2-16 2-20-6z" transform="translate(16 26) rotate(8 40 40)"/></g><g fill="#b9823a"><circle cx="36" cy="36" r="1.6"/><circle cx="48" cy="38" r="1.6"/><circle cx="52" cy="66" r="1.6"/><circle cx="64" cy="64" r="1.6"/></g>'),
+      palomitas: S('<g fill="#fff4cf" stroke="#e8d79a" stroke-width="1.5"><circle cx="34" cy="38" r="9"/><circle cx="48" cy="30" r="10"/><circle cx="62" cy="36" r="9"/><circle cx="72" cy="46" r="8"/><circle cx="28" cy="48" r="8"/><circle cx="50" cy="44" r="9"/></g><path d="M24 48h52l-6 38H30z" fill="#fff" stroke="#e5e9ee" stroke-width="1.5"/><path d="M30 48h8l1 38h-7zM46 48h8v38h-8zM62 48h8l-3 38h-6z" fill="#d6312b"/>'),
+      barra: S('<rect x="12" y="38" width="76" height="26" rx="6" fill="#c98a4a"/><path d="M12 38h10v26H12zM78 38h10v26H78z" fill="#a8682a"/><rect x="28" y="44" width="44" height="14" rx="3" fill="#f3e6cf"/><g fill="#c98a4a"><circle cx="38" cy="51" r="2"/><circle cx="50" cy="51" r="2"/><circle cx="62" cy="51" r="2"/></g>'),
+      gelatina: S('<path d="M26 40h48l-6 42H32z" fill="#e8445a" opacity=".92"/><ellipse cx="50" cy="40" rx="24" ry="6" fill="#f4768a"/><ellipse cx="42" cy="58" rx="4" ry="9" fill="#fff" opacity=".3"/><circle cx="50" cy="30" r="5" fill="#d6312b"/>'),
+      pizza: S('<path d="M50 88L14 26c22-14 50-14 72 0z" fill="#f2c442"/><path d="M14 26c22-14 50-14 72 0" fill="none" stroke="#d9852a" stroke-width="6"/><g fill="#c4322b"><circle cx="40" cy="38" r="6"/><circle cx="60" cy="40" r="6"/><circle cx="50" cy="58" r="6"/></g><g fill="#4c9a3a"><circle cx="52" cy="40" r="2"/><circle cx="42" cy="52" r="2"/></g>'),
+      nuggets: S('<g fill="#d9a04a"><path d="M14 44c0-12 12-16 22-14 10 2 14 10 10 20-4 10-18 12-26 6-4-3-6-7-6-12z"/><path d="M52 34c0-10 12-14 22-10 10 4 12 16 4 22-8 6-20 4-24-4-2-3-2-6-2-8z"/><path d="M34 68c0-10 10-14 20-12 10 2 14 12 8 20-6 8-20 6-26 0-2-3-2-6-2-8z"/></g><g fill="#f0c27a" opacity=".7"><circle cx="28" cy="40" r="2"/><circle cx="62" cy="34" r="2"/><circle cx="46" cy="66" r="2"/></g>'),
+      vegcong: S('<path d="M24 14h52l4 8-2 62H22l-2-62z" fill="#9ed0ee"/><rect x="30" y="34" width="40" height="34" rx="6" fill="#fff" opacity=".92"/><g fill="#5aa845"><circle cx="40" cy="48" r="4"/><circle cx="50" cy="44" r="4"/><circle cx="58" cy="50" r="4"/></g><g fill="#f08a24"><rect x="42" y="54" width="6" height="6" rx="1"/><rect x="54" y="58" width="6" height="6" rx="1"/></g>'),
+      hielo: S('<g fill="#bfe6f7" stroke="#8cc4e6" stroke-width="2"><rect x="16" y="46" width="32" height="32" rx="6"/><rect x="48" y="40" width="34" height="34" rx="6" transform="rotate(8 65 57)"/><rect x="34" y="20" width="30" height="30" rx="6" transform="rotate(-10 49 35)"/></g><g stroke="#fff" stroke-width="3" opacity=".7" stroke-linecap="round"><path d="M22 54l8-4M54 48l8-4M40 28l8-3"/></g>'),
+      cola: S('<rect x="44" y="6" width="12" height="6" rx="2" fill="#d6312b"/><path d="M44 12h12v14c0 8 14 16 14 32v22c0 4-3 6-6 6H36c-3 0-6-2-6-6V58c0-16 14-24 14-32z" fill="#3a1d12"/><path d="M30 58h40v14H30z" fill="#d6312b"/><path d="M34 65c6-4 10-4 16 0s10 4 16 0" stroke="#fff" stroke-width="2.4" fill="none"/>'),
+      whisky: S('<rect x="42" y="8" width="16" height="10" rx="2" fill="#2b2b2b"/><path d="M38 18h24l4 10v54c0 4-3 6-6 6H40c-3 0-6-2-6-6V28z" fill="#b8741f"/><rect x="36" y="46" width="28" height="24" fill="#f3ecda"/><circle cx="50" cy="58" r="5" fill="#b8741f"/>'),
+      suavizante: jug('#f08ca0', '<path d="M50 52c-6 4-6 12 0 14 6-2 6-10 0-14z" fill="#f08ca0"/>'),
+      lavaplatos: squeeze('#6bc24a', '#2f7a3a', '<circle cx="44" cy="62" r="6" fill="#e2f4c8"/><circle cx="58" cy="58" r="4" fill="#e2f4c8"/><circle cx="56" cy="68" r="3" fill="#e2f4c8"/>'),
+      esponja: S('<rect x="16" y="34" width="68" height="34" rx="5" fill="#f2d03a"/><rect x="16" y="54" width="68" height="14" rx="4" fill="#4c9a3a"/><g fill="#d9b020"><circle cx="30" cy="42" r="3"/><circle cx="48" cy="46" r="3"/><circle cx="66" cy="40" r="3"/><circle cx="74" cy="48" r="2"/></g>'),
+      spray: spray('#4ac0b0'),
+      aerosol: aerosol('#3b82c4'),
+      toalla: S('<rect x="30" y="16" width="40" height="66" rx="5" fill="#fff" stroke="#d8dde4" stroke-width="2"/><ellipse cx="50" cy="16" rx="20" ry="6" fill="#fff" stroke="#d8dde4" stroke-width="2"/><ellipse cx="50" cy="16" rx="6" ry="2" fill="#b9a27c"/><path d="M30 40h40M30 54h40M30 68h40" stroke="#e5e9ee" stroke-width="2"/><g fill="#7cc3e8"><circle cx="40" cy="47" r="2"/><circle cx="60" cy="47" r="2"/><circle cx="50" cy="61" r="2"/></g>'),
+      aluminio: S('<rect x="12" y="38" width="76" height="30" rx="5" fill="#d0d7df"/><ellipse cx="14" cy="53" rx="6" ry="15" fill="#e8edf2"/><rect x="30" y="40" width="40" height="26" fill="#3b82c4" opacity=".9"/><rect x="38" y="48" width="24" height="10" fill="#fff"/><path d="M20 44h8M20 53h8M20 62h8M72 44h8M72 53h8M72 62h8" stroke="#fff" stroke-width="2" opacity=".6"/>'),
+      servilleta: S('<rect x="22" y="34" width="56" height="48" rx="3" fill="#fbe9ee"/><g transform="rotate(-6 50 50)"><rect x="26" y="26" width="52" height="48" rx="3" fill="#fff" stroke="#e7d3d9" stroke-width="2"/><path d="M34 42h30M34 52h30" stroke="#f08ca0" stroke-width="3" stroke-linecap="round"/></g>'),
+      pilas: S('<rect x="26" y="26" width="22" height="58" rx="4" fill="#2b2b2b"/><rect x="32" y="20" width="10" height="8" rx="2" fill="#cfd8e3"/><rect x="26" y="44" width="22" height="22" fill="#f2c230"/><rect x="52" y="26" width="22" height="58" rx="4" fill="#2b2b2b"/><rect x="58" y="20" width="10" height="8" rx="2" fill="#cfd8e3"/><rect x="52" y="44" width="22" height="22" fill="#f2c230"/>'),
+      bombillo: S('<path d="M50 10c-18 0-28 14-28 28 0 12 8 18 12 26v6h32v-6c4-8 12-14 12-26 0-14-10-28-28-28z" fill="#fff3a8" stroke="#e8d57a" stroke-width="2"/><rect x="36" y="70" width="28" height="16" rx="3" fill="#aab4c0"/><path d="M36 76h28M36 82h28" stroke="#8793a1" stroke-width="2"/><path d="M42 40c4 6 12 6 16 0M50 40v26" stroke="#e0a823" stroke-width="2.4" fill="none"/>'),
+      jabon: S('<rect x="14" y="36" width="72" height="34" rx="12" fill="#7cc3e8"/><rect x="14" y="36" width="72" height="14" rx="10" fill="#a9dcf2"/><circle cx="76" cy="26" r="8" fill="#fff" stroke="#cfe9f7" stroke-width="2"/><circle cx="86" cy="16" r="5" fill="#fff" stroke="#cfe9f7" stroke-width="2"/>'),
+      acond: bottle('#3fb0a0', '#2a7a6e', true),
+      cepillo: S('<g transform="rotate(-18 50 55)"><rect x="8" y="50" width="62" height="10" rx="5" fill="#3b82c4"/><rect x="62" y="44" width="28" height="22" rx="5" fill="#f4f6f9" stroke="#cfd8e3" stroke-width="1.5"/><g stroke="#e85d8a" stroke-width="3.2" stroke-linecap="round"><path d="M68 44v-8M74 44v-8M80 44v-8M86 44v-8"/></g></g>'),
+      enjuague: S('<rect x="40" y="8" width="20" height="16" rx="3" fill="#2f9fd0"/><path d="M36 24h28c6 6 8 12 8 24v34c0 4-3 6-7 6H35c-4 0-7-2-7-6V48c0-12 2-18 8-24z" fill="#3fc6c0"/><rect x="34" y="50" width="32" height="22" rx="3" fill="#fff" opacity=".9"/><path d="M36 61c5-4 9-4 14 0s9 4 14 0" stroke="#3fc6c0" stroke-width="2.4" fill="none"/>'),
+      afeitadora: S('<rect x="42" y="36" width="12" height="52" rx="6" fill="#3b82c4"/><path d="M26 12h40l4 10H22z" fill="#cfd8e3"/><rect x="26" y="22" width="40" height="14" rx="3" fill="#e85d8a"/><path d="M30 28h32" stroke="#fff" stroke-width="2.4"/>'),
+      toallasan: S('<rect x="20" y="22" width="60" height="60" rx="8" fill="#f08ca0"/><circle cx="50" cy="52" r="18" fill="#fff" opacity=".92"/><g fill="#f08ca0"><circle cx="50" cy="44" r="5.5"/><circle cx="58" cy="52" r="5.5"/><circle cx="50" cy="60" r="5.5"/><circle cx="42" cy="52" r="5.5"/></g><circle cx="50" cy="52" r="4" fill="#f2c230"/>'),
+      protector: tube('#f39a2a', '#2b2b2b', '<circle cx="50" cy="49" r="6" fill="#f2c230"/>'),
+      crema_corp: S('<rect x="22" y="30" width="56" height="12" rx="4" fill="#d6a0c0"/><path d="M20 42h60v32c0 6-4 10-10 10H30c-6 0-10-4-10-10z" fill="#f6e3ee"/><rect x="28" y="50" width="44" height="22" rx="3" fill="#fff"/><path d="M50 53c-6 4-6 12 0 14 6-2 6-10 0-14z" fill="#d6a0c0"/>'),
+      algodon: S('<g fill="#fff" stroke="#e5e9ee" stroke-width="2"><circle cx="36" cy="58" r="14"/><circle cx="58" cy="54" r="15"/><circle cx="48" cy="38" r="13"/><circle cx="68" cy="70" r="10"/><circle cx="30" cy="74" r="9"/></g>'),
+      perfume: S('<rect x="40" y="8" width="20" height="14" rx="3" fill="#d9a63a"/><rect x="46" y="22" width="8" height="6" fill="#b9823a"/><rect x="24" y="28" width="52" height="56" rx="10" fill="#e8b4d8" stroke="#c98ab8" stroke-width="2"/><rect x="34" y="46" width="32" height="20" rx="3" fill="#fff" opacity=".85"/><path d="M30 38c6-6 14-6 20 0" stroke="#fff" stroke-width="3" opacity=".5" fill="none"/>'),
+      perro: bag('#8a5a2b', '<rect x="38" y="57" width="24" height="7" rx="3.5" fill="#fff"/><circle cx="38" cy="56" r="4" fill="#fff"/><circle cx="38" cy="65" r="4" fill="#fff"/><circle cx="62" cy="56" r="4" fill="#fff"/><circle cx="62" cy="65" r="4" fill="#fff"/>'),
+      gato: canD('#9a6fc4', '#f3ecfa', '<circle cx="50" cy="52" r="11" fill="#9a6fc4"/><path d="M41 46l-3-10 10 6zM59 46l3-10-10 6z" fill="#9a6fc4"/><circle cx="46" cy="51" r="2" fill="#fff"/><circle cx="54" cy="51" r="2" fill="#fff"/>')
     };
+    OBJ.__gen = gen;
+    return OBJ;
   })();
   var ART_RULES = [
-    ["papel higienico|papel toalla|servilleta", "rollo"], ["crema dental|pasta dental|colgate|cepillo", "dental"], ["pringles", "pringles"],
-    ["papas fritas|papitas|doritos|cheetos|tostitos|nachos|snack|chips|platanito", "snack"],
-    ["salsa|sopa|caldo|enlatado|lata|conserva|atun|sardina|mayonesa|ketchup|mostaza|aderezo", "lata"],
-    ["helado", "helado"], ["chocolate|cacao", "chocolate"], ["galleta|oreo", "galleta"], ["caramelo|dulce|gomita|chicle|bombon", "caramelo"], ["cereal|avena|granola", "cereal"],
-    ["jugo|nectar", "jugo"], ["agua", "agua"], ["cerveza", "cerveza"], ["vino", "vino"], ["refresco|gaseosa|soda|coca|pepsi|sprite|fanta|malta", "soda"], ["cafe", "cafe"], ["te|manzanilla|infusion", "te"],
-    ["leche", "leche"], ["queso", "queso"], ["yogurt|yogur", "yogurt"], ["mantequilla|margarina", "mantequilla"], ["huevo", "huevo"],
-    ["pollo|pechuga|muslo|alita|gallina", "pollo"], ["tocino|bacon", "tocino"], ["jamon", "jamon"], ["salchicha|chorizo|mortadela|salami", "salchicha"],
-    ["carne|res|bistec|molida|costilla|cerdo|chuleta|lomo", "carne"], ["camaron|langostino|marisco", "camaron"], ["pescado|salmon|tilapia|corvina|filete", "pescado"],
-    ["manzana", "manzana"], ["banano|guineo|platano|banana", "banano"], ["naranja|mandarina", "naranja"], ["limon|lima", "limon"], ["fresa", "fresa"], ["uva", "uva"], ["sandia|melon", "sandia"], ["pina", "pina"], ["mango", "mango"], ["aguacate", "aguacate"],
-    ["tomate", "tomate"], ["cebolla", "cebolla"], ["ajo", "ajo"], ["zanahoria", "zanahoria"], ["papa|patata", "papa"], ["pepino|zuchini|zucchini|calabacin", "pepino"],
-    ["lechuga|repollo|espinaca|acelga|culantro|cilantro|perejil|apio|ensalada", "lechuga"], ["pimenton|aji|chile", "pimenton"], ["berenjena", "berenjena"], ["maiz|elote", "maiz"], ["brocoli|coliflor", "brocoli"], ["hongo|champinon", "hongo"],
-    ["croissant", "croissant"], ["pan|baguette|tostada|bollo|tortilla|pita", "pan"], ["arroz", "arroz"], ["pasta|espagueti|spaghetti|macarron|fideo|tallarin", "pasta"], ["frijol|lenteja|garbanzo|poroto", "frijol"],
-    ["aceite|oliva", "aceite"], ["sal", "sal"], ["azucar|splenda|endulzante", "azucar"], ["harina|maicena", "harina"],
-    ["bolsa basura|basura", "basura"], ["jabon|detergente|suavizante|desinfectante|limpiador|lavaplatos|desengrasante", "detergente"], ["cloro|lavandina", "cloro"],
-    ["shampoo|champu|acondicionador|crema corporal|locion|protector", "shampoo"], ["desodorante", "rollon"], ["panal|toallita", "panal"], ["perro|gato|croqueta|mascota", "mascota"]
+    ["papel higienico", "rollo"], ["papel toalla|toalla de papel|toallas de papel", "toalla"], ["papel aluminio|aluminio", "aluminio"], ["servilleta", "servilleta"],
+    ["crema dental|pasta dental|colgate", "dental"], ["cepillo dental|cepillo de dientes|cepillo", "cepillo"], ["enjuague bucal|enjuague", "enjuague"],
+    ["crema corporal|crema de manos|crema facial|locion|hidratante", "crema_corp"],
+    ["pringles", "pringles"], ["papas fritas|papitas|doritos|cheetos|tostitos|nachos|snack|chips|platanito", "snack"],
+    ["mantequilla de mani|crema de mani", "manibutter"], ["palomita|popcorn", "palomitas"], ["mani|cacahuate|nuez|almendra", "mani"], ["barra de cereal|barra", "barra"], ["gelatina|flan|pudin", "gelatina"],
+    ["salsa de tomate|ketchup|catsup", "ketchup"], ["mostaza", "mostaza"], ["mayonesa", "mayonesa"], ["mermelada|jalea", "mermelada"], ["miel", "miel"], ["aceituna", "aceitunas"], ["vinagre", "vinagre"], ["pimienta", "pimienta"],
+    ["sazon|condimento|adobo|especia|oregano|comino|curry", "condimento"], ["salsa picante|picante|tabasco", "picante"], ["salsa de soya|soya|salsa inglesa", "soya"], ["sopa instantanea|sopa|ramen|noodle", "sopainst"], ["avena|granola", "avena"],
+    ["atun", "atun"], ["sardina", "sardina"], ["leche condensada|condensada|leche evaporada|evaporada", "condensada"], ["leche en polvo", "polvo"],
+    ["salsa|caldo|enlatado|lata|conserva|aderezo|pure", "lata"],
+    ["helado", "helado"], ["chocolate|cacao", "chocolate"], ["galleta|oreo", "galleta"], ["caramelo|dulce|gomita|chicle|bombon|paleta", "caramelo"], ["cereal", "cereal"],
+    ["pizza", "pizza"], ["nugget|empanizado", "nuggets"], ["vegetales congelados|congelado|congelada", "vegcong"], ["hielo", "hielo"],
+    ["jugo|nectar", "jugo"], ["agua", "agua"], ["cerveza", "cerveza"], ["vino", "vino"], ["ron|whisky|vodka|licor|ginebra|tequila|aguardiente", "whisky"], ["coca|pepsi|cola|malta", "cola"], ["refresco|gaseosa|soda|sprite|fanta|energizante", "soda"], ["cafe", "cafe"], ["te|manzanilla|infusion", "te"],
+    ["leche", "leche"], ["queso", "queso"], ["crema", "crema"], ["yogurt|yogur", "yogurt"], ["mantequilla|margarina", "mantequilla"], ["huevo", "huevo"],
+    ["pechuga", "pechuga"], ["alita", "alitas"], ["pollo|muslo|gallina", "pollo"], ["tocino|bacon", "tocino"], ["jamon", "jamon"], ["salchicha|chorizo|mortadela|salami", "salchicha"],
+    ["molida", "molida"], ["costilla", "costilla"], ["chuleta|cerdo", "chuleta"], ["carne|res|bistec|lomo", "carne"], ["camaron|langostino|marisco", "camaron"], ["salmon", "salmon"], ["pescado|tilapia|corvina|filete", "pescado"],
+    ["croissant", "croissant"], ["pan de molde|pan molde|pan sandwich", "panmolde"], ["dona|donut|rosquilla", "dona"], ["torta|pastel|bizcocho|queque", "torta"], ["tortilla|pita", "tortilla"], ["pan|baguette|tostada|bollo", "pan"],
+    ["arroz", "arroz"], ["pasta|espagueti|spaghetti|macarron|fideo|tallarin", "pasta"], ["frijol|lenteja|garbanzo|poroto", "frijol"], ["aceite|oliva", "aceite"], ["sal", "sal"], ["azucar|splenda|endulzante", "azucar"], ["harina|maicena", "harina"],
+    ["bolsa basura|bolsas de basura|basura", "basura"], ["suavizante", "suavizante"], ["lavaplatos|lavavajillas|lava platos|jabon de platos", "lavaplatos"], ["esponja|estropajo", "esponja"],
+    ["limpiavidrios|limpia vidrios|limpiador|multiusos|desengrasante", "spray"], ["aerosol|insecticida|raid|ambientador|lysol|desinfectante", "aerosol"],
+    ["detergente|jabon liquido|jabon en polvo|lavanderia", "detergente"], ["cloro|lavandina|blanqueador", "cloro"], ["pila|bateria", "pilas"], ["bombillo|foco|bombilla", "bombillo"],
+    ["jabon", "jabon"], ["shampoo|champu", "shampoo"], ["acondicionador", "acond"], ["desodorante", "rollon"], ["afeitadora|rastrillo|cuchilla|maquinilla", "afeitadora"],
+    ["toalla sanitaria|tampon|protector diario", "toallasan"], ["panal|toallita", "panal"], ["protector solar|bloqueador|protector", "protector"], ["algodon|cotonete|hisopo", "algodon"], ["perfume|colonia|fragancia", "perfume"],
+    ["gato|gatito|felino", "gato"], ["perro|cachorro|canino", "perro"], ["croqueta|mascota|concentrado", "mascota"],
+    ["manzana", "manzana"], ["banano|guineo|banana", "banano"], ["platano", "platano"], ["naranja|mandarina", "naranja"], ["limon", "limon"], ["lima", "lima"], ["fresa", "fresa"], ["uva", "uva"], ["sandia", "sandia"], ["melon", "melon"], ["papaya", "papaya"], ["pina", "pina"], ["mango", "mango"], ["aguacate", "aguacate"],
+    ["coco", "coco"], ["pera", "pera"], ["durazno|melocoton", "durazno"], ["cereza", "cereza"],
+    ["tomate", "tomate"], ["cebollin|cebolleta", "cebollin"], ["cebolla", "cebolla"], ["ajo", "ajo"], ["zanahoria", "zanahoria"], ["papa|patata", "papa"], ["yuca|name|otoe", "yuca"], ["calabaza|zapallo", "calabaza"], ["pepino|zucchini|calabacin", "pepino"],
+    ["lechuga|ensalada", "lechuga"], ["repollo", "repollo"], ["espinaca|acelga", "espinaca"], ["culantro|cilantro|perejil|hierbabuena|albahaca", "culantro"], ["apio", "apio"], ["pimenton", "pimenton"], ["aji|chile", "aji"],
+    ["berenjena", "berenjena"], ["maiz|elote", "maiz"], ["brocoli", "brocoli"], ["coliflor", "coliflor"], ["remolacha", "remolacha"], ["jengibre", "jengibre"], ["habichuela|ejote", "habichuela"], ["arveja|guisante|chicharo", "arvejas"], ["hongo|champinon", "hongo"]
   ];
-  var ART_CAT = { "Frutas y verduras": "frutas", "Carnes y pescados": "carne", "Lácteos y huevos": "leche", "Panadería": "pan", "Despensa": "lata", "Bebidas": "agua", "Snacks y dulces": "snack", "Congelados": "congelados", "Limpieza del hogar": "detergente", "Cuidado personal": "shampoo", "Mascotas": "mascota", "Otros": "canasta" };
   var artRulesReady = null;
-  function artFor(text, category) {
+  function artFor(text, category, seed) {
     if (!artRulesReady) artRulesReady = ART_RULES.map(function (r) { return [r[0].split("|").map(function (k) { return pkey(k); }), r[1]]; });
     var padded = " " + pkey(text) + " ";
     for (var i = 0; i < artRulesReady.length; i++) {
       var kws = artRulesReady[i][0];
-      for (var j = 0; j < kws.length; j++) if (padded.indexOf(" " + kws[j] + " ") >= 0) return artRulesReady[i][1];
+      for (var j = 0; j < kws.length; j++) if (padded.indexOf(" " + kws[j] + " ") >= 0 && ART[artRulesReady[i][1]]) return { id: artRulesReady[i][1], svg: ART[artRulesReady[i][1]] };
     }
-    return ART_CAT[category] || "canasta";
+    return ART.__gen(pkey(seed || text), category);
   }
-  function timgHtml(art) { return '<span class="timg">' + (ART[art] || ART.canasta) + '</span>'; }
+  function timgHtml(art, shift) { return '<span class="timg"' + (shift ? ' style="filter:hue-rotate(' + shift + 'deg)"' : '') + '>' + (art && art.svg ? art.svg : ART.canasta) + '</span>'; }
   function allStats() {
     var g = {};
     state.purchases.forEach(function (p) {
@@ -817,7 +962,7 @@ textarea { min-height:140px; resize:vertical; font-size:13px; }
       x.max = Math.max.apply(null, x.occ.map(function (o) { return o.price; }));
       x.count = x.occ.length;
       x.category = Object.keys(x.cats).sort(function (a, b) { return x.cats[b] - x.cats[a]; })[0] || "Otros";
-      x.art = artFor(x.name + " " + Object.keys(x.specifics).join(" "), x.category);
+      x.art = artFor(x.name + " " + Object.keys(x.specifics).join(" "), x.category, x.name);
       return x;
     });
   }
@@ -827,25 +972,27 @@ textarea { min-height:140px; resize:vertical; font-size:13px; }
       return '<div class="card empty"><div class="big">🏷️</div><h2>Aún no hay precios que comparar</h2><p class="sub">Cuando agregues compras, aquí verás el precio unitario de cada producto a lo largo del tiempo.</p></div>';
     }
     var q = norm(state.priceQuery);
-    var stats = allStats().filter(function (x) { return !q || norm(x.name).indexOf(q) >= 0; });
+    var cmp = function (a, b) { return a.localeCompare(b, "es", { sensitivity: "base" }); };
+    var all = allStats(), used = {};
+    all.slice().sort(function (a, b) { return cmp(a.category, b.category) || cmp(a.name, b.name); }).forEach(function (x) { var n = used[x.art.id] || 0; used[x.art.id] = n + 1; x.shift = n ? (n * 60) % 360 : 0; });
+    var stats = all.filter(function (x) { return !q || norm(x.name).indexOf(q) >= 0; });
     var html = '<div class="card"><h2>Comparar precios</h2><p class="sub">Precio por unidad (o por kg/lb) de cada producto, compra por compra.</p>' +
       '<input class="search" id="pq" value="' + esc(state.priceQuery) + '" placeholder="Buscar producto…" aria-label="Buscar producto"></div>';
     if (!stats.length) return html + '<div class="card"><p class="sub" style="margin:0">No encontré productos con ese nombre.</p></div>';
     var byCat = {};
     stats.forEach(function (x) { (byCat[x.category] = byCat[x.category] || []).push(x); });
-    var cmp = function (a, b) { return a.localeCompare(b, "es", { sensitivity: "base" }); };
     Object.keys(byCat).sort(cmp).forEach(function (cat) {
       var list = byCat[cat].sort(function (a, b) { return cmp(a.name, b.name); });
       var collapsed = !q && state.pcols[cat];
       html += '<div class="card"><button class="cathead" data-act="pcat" data-k="' + esc(cat) + '" aria-expanded="' + !collapsed + '"><span class="chev"></span><b>' + esc(cat) + '</b><span class="small">' + list.length + '</span></button>';
       if (!collapsed) html += '<div class="tiles">' + list.map(function (x) {
-        return '<button class="tile" data-act="pcmp" data-k="' + esc(x.key) + '" aria-pressed="' + (state.pcmp === x.key) + '">' + timgHtml(x.art) + '<span class="tname">' + esc(x.name) + '</span></button>';
+        return '<button class="tile" data-act="pcmp" data-k="' + esc(x.key) + '" aria-pressed="' + (state.pcmp === x.key) + '">' + timgHtml(x.art, x.shift) + '<span class="tname">' + esc(x.name) + '</span></button>';
       }).join("") + '</div>';
       html += '</div>';
     });
-    var sel = state.pcmp ? allStats().filter(function (x) { return x.key === state.pcmp; })[0] : null;
+    var sel = state.pcmp ? all.filter(function (x) { return x.key === state.pcmp; })[0] : null;
     if (sel) {
-      html += '<div class="sheetwrap" data-act="pclose"><div class="sheet" data-act="noop" role="dialog" aria-label="' + esc(sel.name) + '"><div class="sheethead">' + timgHtml(sel.art) + '<h2>' + esc(sel.name) + '</h2><button class="icon" data-act="pclose" aria-label="Cerrar" style="width:44px">✕</button></div>' +
+      html += '<div class="sheetwrap" data-act="pclose"><div class="sheet" data-act="noop" role="dialog" aria-label="' + esc(sel.name) + '"><div class="sheethead">' + timgHtml(sel.art, sel.shift) + '<h2>' + esc(sel.name) + '</h2><button class="icon" data-act="pclose" aria-label="Cerrar" style="width:44px">✕</button></div>' +
         '<p class="small" style="margin:0 0 10px">' + sel.count + (sel.count === 1 ? ' compra' : ' compras') + (sel.count > 1 ? ' · desde ' + money(sel.min) + ' hasta ' + money(sel.max) : '') + '</p>' +
         sel.occ.map(function (o) {
           var cls = sel.count > 1 ? (o.price === sel.min ? " best" : (o.price === sel.max ? " worst" : "")) : "";
