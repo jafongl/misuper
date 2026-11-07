@@ -38,10 +38,16 @@ function providerName() {
   return process.env.GEMINI_API_KEY ? "gemini" : "anthropic";
 }
 
-async function callGemini(images) {
+function promptWith(subcats) {
+  const list = (Array.isArray(subcats) ? subcats : []).map((x) => String(x || "").replace(/[\r\n]+/g, " ").trim().slice(0, 40)).filter(Boolean).slice(0, 150);
+  if (!list.length) return PROMPT;
+  return PROMPT + `\n- Para el campo "producto" usa EXACTAMENTE una de estas subcategorías existentes si alguna describe al producto: ${list.join(", ")}. Solo si ninguna se parece, crea una nueva corta y genérica.`;
+}
+
+async function callGemini(images, prompt) {
   const model = process.env.GEMINI_MODEL || "gemini-3.5-flash-lite";
   const parts = images.map((i) => ({ inline_data: { mime_type: i.mime, data: i.data } }));
-  parts.push({ text: PROMPT });
+  parts.push({ text: prompt });
   const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`, {
     method: "POST",
     headers: { "content-type": "application/json", "x-goog-api-key": process.env.GEMINI_API_KEY },
@@ -52,9 +58,9 @@ async function callGemini(images) {
   return { ok: r.ok, status: r.status, text, detail: (data && data.error && data.error.message) || "" };
 }
 
-async function callAnthropic(images) {
+async function callAnthropic(images, prompt) {
   const content = images.map((i) => ({ type: "image", source: { type: "base64", media_type: i.mime, data: i.data } }));
-  content.push({ type: "text", text: PROMPT });
+  content.push({ type: "text", text: prompt });
   const r = await fetch("https://api.anthropic.com/v1/messages", {
     method: "POST",
     headers: { "content-type": "application/json", "x-api-key": process.env.ANTHROPIC_API_KEY, "anthropic-version": "2023-06-01" },
@@ -71,7 +77,7 @@ module.exports = async (req, res) => {
   const key = provider === "gemini" ? process.env.GEMINI_API_KEY : process.env.ANTHROPIC_API_KEY;
   if (!key || !process.env.APP_CODE) return res.status(500).json({ error: "config" });
 
-  const { images, code } = req.body || {};
+  const { images, code, subcats } = req.body || {};
   if (!same(code || "", process.env.APP_CODE)) return res.status(401).json({ error: "code" });
   if (!Array.isArray(images) || images.length < 1 || images.length > 3) return res.status(400).json({ error: "images" });
 
@@ -87,7 +93,8 @@ module.exports = async (req, res) => {
 
   let out;
   try {
-    out = provider === "gemini" ? await callGemini(parsedImages) : await callAnthropic(parsedImages);
+    const prompt = promptWith(subcats);
+    out = provider === "gemini" ? await callGemini(parsedImages, prompt) : await callAnthropic(parsedImages, prompt);
   } catch (e) {
     return res.status(502).json({ error: "upstream", detail: "sin conexión con la API" });
   }
